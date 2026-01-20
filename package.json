@@ -1,0 +1,19 @@
+{
+  "name": "conestoga",
+  "version": "0.1.0",
+  "description": "Conestoga project with ontology management tools",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ontology",
+    "rdf",
+    "semantic-web"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@gotalabs/cc-sdd": "github:gotalabs/cc-sdd"
+  }
+}
