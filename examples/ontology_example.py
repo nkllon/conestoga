@@ -36,7 +36,7 @@ def create_sample_ontology():
     g.add((EX.Buddy, RDF.type, EX.Dog))
     g.add((EX.Buddy, EX.hasName, Literal("Buddy")))
     
-    print("✅ Created sample ontology with {} triples".format(len(g)))
+    print(f"✅ Created sample ontology with {len(g)} triples")
     return g
 
 

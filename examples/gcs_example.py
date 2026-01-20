@@ -25,7 +25,7 @@ def list_buckets():
         print("💡 Make sure GOOGLE_APPLICATION_CREDENTIALS is set in your .env file")
 
 
-def upload_rdf_to_gcs(graph_data: str, bucket_name: str, blob_name: str):
+def upload_rdf_to_gcs(graph_data: str, bucket_name: str, blob_name: str, content_type: str = 'application/rdf+xml'):
     """
     Upload RDF data to Google Cloud Storage.
     
@@ -33,6 +33,8 @@ def upload_rdf_to_gcs(graph_data: str, bucket_name: str, blob_name: str):
         graph_data: RDF data as string
         bucket_name: GCS bucket name
         blob_name: Name for the blob in GCS
+        content_type: MIME type for the RDF data (default: 'application/rdf+xml')
+                     Common types: 'text/turtle', 'application/n-triples', 'application/ld+json'
     """
     load_dotenv()
     
@@ -41,7 +43,7 @@ def upload_rdf_to_gcs(graph_data: str, bucket_name: str, blob_name: str):
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(blob_name)
         
-        blob.upload_from_string(graph_data, content_type='application/rdf+xml')
+        blob.upload_from_string(graph_data, content_type=content_type)
         
         print(f"✅ Uploaded RDF data to gs://{bucket_name}/{blob_name}")
     except Exception as e:
