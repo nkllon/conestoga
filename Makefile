@@ -10,11 +10,14 @@ help:
 	@echo "  format        - Format code"
 	@echo "  run           - Run the main application"
 
+all: install-dev test lint
+
 install:
 	uv sync
 
-install-dev: install
-	npm install
+install-dev:
+	uv sync --all-extras
+	-npm install
 
 clean:
 	rm -rf __pycache__ .pytest_cache .ruff_cache

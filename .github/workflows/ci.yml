@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - release/**
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - release/**
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  CI: "true"
+  UI_HEADLESS: "1"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build scaffold note
+        run: |
+          echo "Build scaffold ready; implement uv lock validation and build steps in Task 3."
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Test scaffold note
+        run: |
+          echo "Test scaffold ready; implement headless pytest in Task 5."
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Lint scaffold note
+        run: |
+          echo "Lint scaffold ready; implement ruff checks in Task 4."
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Security scaffold note
+        run: |
+          echo "Security scaffold ready; implement gitleaks and pip-audit in Task 6."
+
+  artifacts:
+    name: artifacts
+    runs-on: ubuntu-latest
+    needs: security
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Artifacts scaffold note
+        run: |
+          echo "Artifact scaffold ready; implement packaging in Task 7."
+
+  deploy-gate:
+    name: deploy-gate
+    runs-on: ubuntu-latest
+    needs: artifacts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Deploy gate scaffold note
+        run: |
+          echo "Deploy gate scaffold ready; implement preflight and rollback guard in Task 8."
+
+  summary:
+    name: summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - build
+      - test
+      - lint
+      - security
+      - artifacts
+      - deploy-gate
+    steps:
+      - name: Summarize job results
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+          ARTIFACTS_RESULT: ${{ needs.artifacts.result }}
+          DEPLOY_GATE_RESULT: ${{ needs['deploy-gate'].result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          cat <<'MD' >> "$GITHUB_STEP_SUMMARY"
+          ## Job results
+          | Job | Result | Run |
+          | --- | ------ | --- |
+          | build | ${BUILD_RESULT} | [logs](${RUN_URL}) |
+          | test | ${TEST_RESULT} | [logs](${RUN_URL}) |
+          | lint | ${LINT_RESULT} | [logs](${RUN_URL}) |
+          | security | ${SECURITY_RESULT} | [logs](${RUN_URL}) |
+          | artifacts | ${ARTIFACTS_RESULT} | [logs](${RUN_URL}) |
+          | deploy-gate | ${DEPLOY_GATE_RESULT} | [logs](${RUN_URL}) |
+          MD
+
+          failures=0
+          for name in build test lint security artifacts deploy-gate; do
+            var_name=$(echo "${name}_RESULT" | tr '[:lower:]-' '[:upper:]_')
+            result=${!var_name}
+            if [ "$result" != "success" ]; then
+              echo "Job ${name} result: ${result}"
+              failures=$((failures + 1))
+            fi
+          done
+
+          if [ "$failures" -ne 0 ]; then
+            echo "One or more jobs did not succeed; see summary above."
+            exit 1
+          fi

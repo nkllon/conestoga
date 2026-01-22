@@ -1,21 +1,36 @@
 [project]
 name = "conestoga"
 version = "0.1.0"
-description = "Ontology management and cloud tools project"
+description = "Oregon Trail-inspired journey simulation with Gemini-powered events"
 requires-python = ">=3.12"
 dependencies = [
-    "google-cloud-storage>=3.8.0",
+    "google-cloud-storage",
     "owlrl>=7.1.4",
     "python-dotenv>=1.2.1",
     "rdflib>=7.5.0",
+    "pygame-ce>=2.4.0",
+    "google-genai>=1.60.0",
+    "pydantic>=2.0.0",
+    "redis>=5.0.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",
+    "prometheus-client>=0.19.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
 
+[project.scripts]
+conestoga = "conestoga.game.runner:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
     "ruff>=0.1.0",
+    "pyshacl>=0.23.0",
+    "langchain>=0.2.10",
+    "langchain-core>=0.2.10",
 ]
 
 [build-system]
@@ -46,4 +61,3 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-
