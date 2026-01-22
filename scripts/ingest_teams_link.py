@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from teams_link_ingestion.link_validator import TeamsLinkValidator, LinkType
 from teams_link_ingestion.classifier import ClassificationEngine
-from teams_link_ingestion.content_fetcher import TeamsContentFetcher, MessageContent, LinkContent, ExecutiveOrderContent
+from teams_link_ingestion.content_fetcher import TeamsContentFetcher, MessageContent, LinkContent
 from teams_link_ingestion.content_storage import ContentStorage
 from teams_link_ingestion.ontology_creator import OntologyEntityCreator
 from teams_link_ingestion.content_extractor import ContentExtractor
