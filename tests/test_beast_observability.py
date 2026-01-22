@@ -1,51 +1,32 @@
 """Tests for Beast observability trace context and metrics"""
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from prometheus_client import REGISTRY
 from conestoga.beast.observability import ObservabilityStack
 
 
 @pytest.fixture(autouse=True)
-def cleanup_prometheus_registry():
-    """Clean up Prometheus registry after each test"""
-    # Remove any existing beast metrics before each test
-    collectors_to_remove = []
-    for collector in list(REGISTRY._collector_to_names.keys()):
-        for name in REGISTRY._collector_to_names.get(collector, []):
-            if name.startswith('beast_') or name.startswith('hacp_'):
-                collectors_to_remove.append(collector)
-                break
-    
-    for collector in collectors_to_remove:
-        try:
-            REGISTRY.unregister(collector)
-        except Exception:
-            pass
-    
-    yield
-    
-    # Clean up after test
-    collectors_to_remove = []
-    for collector in list(REGISTRY._collector_to_names.keys()):
-        for name in REGISTRY._collector_to_names.get(collector, []):
-            if name.startswith('beast_') or name.startswith('hacp_'):
-                collectors_to_remove.append(collector)
-                break
-    
-    for collector in collectors_to_remove:
-        try:
-            REGISTRY.unregister(collector)
-        except Exception:
-            pass
+def mock_prometheus_and_observability():
+    """Mock Prometheus and observability components to avoid registry conflicts"""
+    with patch("conestoga.beast.observability.Counter") as mock_counter, \
+         patch("conestoga.beast.observability.Histogram") as mock_histogram, \
+         patch("conestoga.beast.observability.Gauge") as mock_gauge, \
+         patch("conestoga.beast.observability.start_http_server") as mock_http_server, \
+         patch("conestoga.beast.observability.OTLPSpanExporter") as mock_exporter, \
+         patch("conestoga.beast.observability.trace") as mock_trace:
+        yield {
+            "counter": mock_counter,
+            "histogram": mock_histogram,
+            "gauge": mock_gauge,
+            "http_server": mock_http_server,
+            "exporter": mock_exporter,
+            "trace": mock_trace,
+        }
 
 
 class TestObservabilityStackInit:
     """Test observability stack initialization"""
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_init_basic(self, mock_trace, mock_exporter, mock_http_server):
+    def test_init_basic(self, mock_prometheus_and_observability):
         """Test basic observability stack initialization"""
         stack = ObservabilityStack(
             service_name="test-service",
@@ -55,14 +36,12 @@ class TestObservabilityStackInit:
         )
 
         assert stack.service_name == "test-service"
-        mock_http_server.assert_called_once_with(9090)
-        mock_exporter.assert_called_once()
+        mock_prometheus_and_observability["http_server"].assert_called_once_with(9090)
+        mock_prometheus_and_observability["exporter"].assert_called_once()
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_setup_tracer(self, mock_trace, mock_exporter, mock_http_server):
+    def test_setup_tracer(self, mock_prometheus_and_observability):
         """Test tracer setup with correct endpoint"""
+        mock_trace = mock_prometheus_and_observability["trace"]
         mock_tracer_provider = Mock()
         mock_trace.set_tracer_provider = Mock()
         mock_trace.get_tracer_provider.return_value = mock_tracer_provider
@@ -76,14 +55,11 @@ class TestObservabilityStackInit:
         )
 
         # Verify exporter was created with correct endpoint
-        mock_exporter.assert_called_once_with(
+        mock_prometheus_and_observability["exporter"].assert_called_once_with(
             endpoint="http://jaeger.example.com:4318"
         )
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_setup_metrics(self, mock_trace, mock_exporter, mock_http_server):
+    def test_setup_metrics(self, mock_prometheus_and_observability):
         """Test metrics setup"""
         stack = ObservabilityStack(
             service_name="test-service",
@@ -99,17 +75,15 @@ class TestObservabilityStackInit:
         assert hasattr(stack, "hacp_violations")
 
         # Verify HTTP server started on correct port
-        mock_http_server.assert_called_once_with(9091)
+        mock_prometheus_and_observability["http_server"].assert_called_once_with(9091)
 
 
 class TestObservabilityStackTracer:
     """Test tracer functionality"""
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_get_tracer(self, mock_trace, mock_exporter, mock_http_server):
+    def test_get_tracer(self, mock_prometheus_and_observability):
         """Test getting tracer instance"""
+        mock_trace = mock_prometheus_and_observability["trace"]
         mock_tracer = Mock()
         mock_trace.get_tracer.return_value = mock_tracer
 
@@ -127,11 +101,10 @@ class TestObservabilityStackTracer:
 class TestObservabilityStackTraceContext:
     """Test trace context injection and extraction"""
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_inject_trace_context(self, mock_trace, mock_exporter, mock_http_server):
+    def test_inject_trace_context(self, mock_prometheus_and_observability):
         """Test trace context injection into message"""
+        mock_trace = mock_prometheus_and_observability["trace"]
+        
         # Setup mock span context
         mock_span_context = Mock()
         mock_span_context.trace_id = 0x1234567890ABCDEF
@@ -165,13 +138,10 @@ class TestObservabilityStackTraceContext:
         assert isinstance(result["header"]["trace_context"]["trace_id"], str)
         assert isinstance(result["header"]["trace_context"]["span_id"], str)
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_inject_trace_context_creates_header(
-        self, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_inject_trace_context_creates_header(self, mock_prometheus_and_observability):
         """Test trace context injection creates header if missing"""
+        mock_trace = mock_prometheus_and_observability["trace"]
+        
         mock_span_context = Mock()
         mock_span_context.trace_id = 0xABCDEF
         mock_span_context.span_id = 0x123456
@@ -200,12 +170,7 @@ class TestObservabilityStackTraceContext:
         assert "header" in result
         assert "trace_context" in result["header"]
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_extract_trace_context_valid(
-        self, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_extract_trace_context_valid(self, mock_prometheus_and_observability):
         """Test trace context extraction from message"""
         stack = ObservabilityStack(
             service_name="test-service",
@@ -230,12 +195,7 @@ class TestObservabilityStackTraceContext:
             assert call_args["span_id"] == int("fedcba0987654321", 16)
             assert call_args["is_remote"] is True
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_extract_trace_context_missing(
-        self, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_extract_trace_context_missing(self, mock_prometheus_and_observability):
         """Test trace context extraction returns None when missing"""
         stack = ObservabilityStack(
             service_name="test-service",
@@ -250,12 +210,7 @@ class TestObservabilityStackTraceContext:
 
         assert result is None
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_extract_trace_context_no_header(
-        self, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_extract_trace_context_no_header(self, mock_prometheus_and_observability):
         """Test trace context extraction with no header"""
         stack = ObservabilityStack(
             service_name="test-service",
@@ -270,11 +225,10 @@ class TestObservabilityStackTraceContext:
 
         assert result is None
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    def test_trace_context_roundtrip(self, mock_trace, mock_exporter, mock_http_server):
+    def test_trace_context_roundtrip(self, mock_prometheus_and_observability):
         """Test that inject and extract are compatible"""
+        mock_trace = mock_prometheus_and_observability["trace"]
+        
         # Setup mock for injection
         mock_span_context = Mock()
         mock_span_context.trace_id = 0x1234567890ABCDEF
@@ -316,14 +270,10 @@ class TestObservabilityStackTraceContext:
 class TestObservabilityStackMetrics:
     """Test metrics functionality"""
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    @patch("conestoga.beast.observability.Counter")
-    def test_messages_total_counter(
-        self, mock_counter, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_messages_total_counter(self, mock_prometheus_and_observability):
         """Test messages_total counter creation"""
+        mock_counter = mock_prometheus_and_observability["counter"]
+        
         stack = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
@@ -336,14 +286,10 @@ class TestObservabilityStackMetrics:
             call[0][0] == "beast_messages_total" for call in mock_counter.call_args_list
         )
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    @patch("conestoga.beast.observability.Histogram")
-    def test_processing_duration_histogram(
-        self, mock_histogram, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_processing_duration_histogram(self, mock_prometheus_and_observability):
         """Test processing_duration histogram creation"""
+        mock_histogram = mock_prometheus_and_observability["histogram"]
+        
         stack = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
@@ -357,14 +303,10 @@ class TestObservabilityStackMetrics:
             for call in mock_histogram.call_args_list
         )
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    @patch("conestoga.beast.observability.Gauge")
-    def test_connection_status_gauge(
-        self, mock_gauge, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_connection_status_gauge(self, mock_prometheus_and_observability):
         """Test connection_status gauge creation"""
+        mock_gauge = mock_prometheus_and_observability["gauge"]
+        
         stack = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
@@ -377,14 +319,10 @@ class TestObservabilityStackMetrics:
             call[0][0] == "beast_connection_status" for call in mock_gauge.call_args_list
         )
 
-    @patch("conestoga.beast.observability.start_http_server")
-    @patch("conestoga.beast.observability.OTLPSpanExporter")
-    @patch("conestoga.beast.observability.trace")
-    @patch("conestoga.beast.observability.Counter")
-    def test_hacp_violations_counter(
-        self, mock_counter, mock_trace, mock_exporter, mock_http_server
-    ):
+    def test_hacp_violations_counter(self, mock_prometheus_and_observability):
         """Test hacp_violations counter creation"""
+        mock_counter = mock_prometheus_and_observability["counter"]
+        
         stack = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
