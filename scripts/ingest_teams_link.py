@@ -67,6 +67,7 @@ async def verify_with_web_search(content: str, classification) -> Optional[dict]
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
                     continue
         except Exception:
+            # Best-effort 1Password lookup; ignore unexpected errors and fall back to other key sources.
             pass
     
     if not tavily_key:
