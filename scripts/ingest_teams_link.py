@@ -29,7 +29,6 @@ async def verify_with_web_search(content: str, classification) -> Optional[dict]
     Returns:
         Dictionary with verification results and sources, or None if skipped
     """
-    import os
     import subprocess
     
     # Only verify if content mentions organizations or claims
