@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Iterable, List, Optional
 
-from .events import Choice, Effect, EffectType, EventDraft
+from .events import Effect, EffectType, EventDraft
 from .state import ItemCatalog
 
 
