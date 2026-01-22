@@ -14,6 +14,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@gotalabs/cc-sdd": "github:gotalabs/cc-sdd"
+    "@gotalabs/cc-sdd": "npm:cc-sdd@^2.0.5"
   }
 }

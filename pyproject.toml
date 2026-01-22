@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Oregon Trail-inspired journey simulation with Gemini-powered events"
 requires-python = ">=3.12"
 dependencies = [
-    "google-cloud-storage>=3.8.0",
+    "google-cloud-storage",
     "owlrl>=7.1.4",
     "python-dotenv>=1.2.1",
     "rdflib>=7.5.0",
@@ -21,6 +21,9 @@ conestoga = "conestoga.game.runner:main"
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.1.0",
+    "pyshacl>=0.23.0",
+    "langchain>=0.2.10",
+    "langchain-core>=0.2.10",
 ]
 
 [build-system]
@@ -51,4 +54,3 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-

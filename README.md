@@ -195,6 +195,9 @@ make lint
 make test
 ```
 
+#### UI headless mode
+- CI defaults to headless Pygame (`UI_HEADLESS=1` or `CI=1`). To force a visible window locally, run with `UI_HEADLESS=0`.
+
 ## Project Structure
 
 ```

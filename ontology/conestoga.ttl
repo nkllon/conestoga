@@ -1,0 +1,129 @@
+@prefix : <http://example.com/conestoga#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Classes
+:Requirement a rdfs:Class .
+:DesignArtifact a rdfs:Class .
+:Component a rdfs:Class .
+:Implementation a rdfs:Class .
+:TestCase a rdfs:Class .
+:Task a rdfs:Class .
+
+# Properties
+:satisfies a rdf:Property ; rdfs:domain :Implementation ; rdfs:range :Requirement .
+:verifies a rdf:Property ; rdfs:domain :TestCase ; rdfs:range :Requirement .
+:covers a rdf:Property ; rdfs:domain :Task ; rdfs:range :Requirement .
+:designFor a rdf:Property ; rdfs:domain :DesignArtifact ; rdfs:range :Requirement .
+:implementsComponent a rdf:Property ; rdfs:domain :Implementation ; rdfs:range :Component .
+:describesComponent a rdf:Property ; rdfs:domain :DesignArtifact ; rdfs:range :Component .
+:path a rdf:Property ; rdfs:domain [ rdf:type rdfs:Class ] ; rdfs:range rdfs:Literal .
+
+# Requirements
+:R1_TravelLoop a :Requirement ; rdfs:label "Requirement 1.1-1.4 Travel Loop" .
+:R2_Events a :Requirement ; rdfs:label "Requirement 2.1-2.4 Event Generation and Resilience" .
+:R3_Resolutions a :Requirement ; rdfs:label "Requirement 3.1-3.4 Choice Resolution and Effects" .
+:R4_UI a :Requirement ; rdfs:label "Requirement 4.1-4.4 UI Feedback" .
+:R5_Observability a :Requirement ; rdfs:label "Requirement 5.1-5.3 Observability and Recovery" .
+
+# Components
+:ConestogaGameComponent a :Component ; rdfs:label "ConestogaGame Loop" .
+:GeminiGatewayComponent a :Component ; rdfs:label "GeminiGateway" .
+:ValidatorComponent a :Component ; rdfs:label "Validation Engine" .
+:FallbackMonitorComponent a :Component ; rdfs:label "Fallback Monitor" .
+:GameUIComponent a :Component ; rdfs:label "GameUI" .
+
+# Design Artifacts
+:DesignDoc a :DesignArtifact ;
+  rdfs:label "Core-game Design" ;
+  :path ".kiro/specs/core-game/design.md" ;
+  :designFor :R1_TravelLoop, :R2_Events, :R3_Resolutions, :R4_UI, :R5_Observability ;
+  :describesComponent :ConestogaGameComponent, :GeminiGatewayComponent, :ValidatorComponent, :FallbackMonitorComponent, :GameUIComponent .
+
+# Tasks
+:Task1 a :Task ; rdfs:label "Harden validation and fallback" ; :path ".kiro/specs/core-game/tasks.md#1" ; :covers :R2_Events, :R3_Resolutions, :R5_Observability .
+:Task2 a :Task ; rdfs:label "Improve UI/runner observability" ; :path ".kiro/specs/core-game/tasks.md#2" ; :covers :R1_TravelLoop, :R2_Events, :R4_UI, :R5_Observability .
+:Task3 a :Task ; rdfs:label "Add deterministic tests" ; :path ".kiro/specs/core-game/tasks.md#3" ; :covers :R2_Events, :R3_Resolutions, :R4_UI, :R5_Observability .
+:Task4 a :Task ; rdfs:label "Maintain ontology traceability" ; :path ".kiro/specs/core-game/tasks.md#4" ; :covers :R5_Observability .
+
+# Implementations
+:RunnerImpl a :Implementation ;
+  rdfs:label "ConestogaGame implementation" ;
+  :path "src/conestoga/game/runner.py" ;
+  :implementsComponent :ConestogaGameComponent ;
+  :satisfies :R1_TravelLoop, :R2_Events, :R4_UI, :R5_Observability .
+
+:GatewayImpl a :Implementation ;
+  rdfs:label "GeminiGateway implementation" ;
+  :path "src/conestoga/game/gemini_gateway.py" ;
+  :implementsComponent :GeminiGatewayComponent ;
+  :satisfies :R2_Events, :R3_Resolutions, :R5_Observability .
+
+:ValidatorImpl a :Implementation ;
+  rdfs:label "Validation utilities" ;
+  :path "src/conestoga/game/validators.py" ;
+  :implementsComponent :ValidatorComponent ;
+  :satisfies :R2_Events, :R3_Resolutions .
+
+:FallbackMonitorImpl a :Implementation ;
+  rdfs:label "Fallback monitor" ;
+  :path "src/conestoga/game/fallback_monitor.py" ;
+  :implementsComponent :FallbackMonitorComponent ;
+  :satisfies :R2_Events, :R5_Observability .
+
+:UIImpl a :Implementation ;
+  rdfs:label "GameUI" ;
+  :path "src/conestoga/game/ui.py" ;
+  :implementsComponent :GameUIComponent ;
+  :satisfies :R1_TravelLoop, :R4_UI .
+
+# Tests
+:TestValidation a :TestCase ;
+  rdfs:label "Validation and fallback tests" ;
+  :path "tests/test_game.py" ;
+  :verifies :R2_Events, :R3_Resolutions, :R5_Observability .
+
+# SHACL Shapes
+:ImplementationShape a sh:NodeShape ;
+  sh:targetClass :Implementation ;
+  sh:property [
+    sh:path :satisfies ;
+    sh:minCount 1 ;
+    sh:message "Implementations must satisfy at least one requirement." ;
+  ] ;
+  sh:property [
+    sh:path :path ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:message "Implementations must declare a source path." ;
+  ] .
+
+:TestShape a sh:NodeShape ;
+  sh:targetClass :TestCase ;
+  sh:property [
+    sh:path :verifies ;
+    sh:minCount 1 ;
+    sh:message "Tests must verify at least one requirement." ;
+  ] ;
+  sh:property [
+    sh:path :path ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:message "Tests must declare a source path." ;
+  ] .
+
+:TaskShape a sh:NodeShape ;
+  sh:targetClass :Task ;
+  sh:property [
+    sh:path :covers ;
+    sh:minCount 1 ;
+    sh:message "Tasks must cover at least one requirement." ;
+  ] ;
+  sh:property [
+    sh:path :path ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:message "Tasks must declare a source path." ;
+  ] .
