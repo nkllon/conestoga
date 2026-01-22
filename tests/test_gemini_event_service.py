@@ -1,6 +1,8 @@
 """Comprehensive tests for GeminiEventService"""
 import json
 import os
+import re
+import uuid
 from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, patch
 
@@ -238,8 +240,6 @@ class TestGenerateEventDraft:
         self, gemini_service, mock_genai_client, sample_game_state
     ):
         """Test that a UUID is generated for event_id"""
-        import uuid
-        
         # We need to capture the generated UUID to return it in the mock response
         generated_uuid = None
         
@@ -248,7 +248,6 @@ class TestGenerateEventDraft:
             # Extract the UUID from the prompt
             prompt = kwargs.get("contents", "")
             # Find "event_id MUST be exactly: <uuid>"
-            import re
             match = re.search(r'event_id MUST be exactly: ([a-f0-9-]+)', prompt)
             if match:
                 generated_uuid = match.group(1)
