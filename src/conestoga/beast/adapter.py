@@ -7,7 +7,7 @@ import asyncio
 import uuid
 from typing import Optional, Callable, Dict, Any
 
-from eudorus.hacp.interceptor import HACPInterceptor, HACPViolationError
+from conestoga.hacp.interceptor import HACPInterceptor, HACPViolationError
 
 
 class BeastAdapter:
@@ -102,7 +102,7 @@ class BeastAdapter:
         """
         Deserializes and routes an incoming message.
         """
-        from eudorus.beast.envelope import validate_envelope, EnvelopeValidationError
+        from conestoga.beast.envelope import validate_envelope, EnvelopeValidationError
 
         try:
             message = json.loads(raw_message)
@@ -235,7 +235,7 @@ class BeastAdapter:
         """
         Async version of message handler.
         """
-        from eudorus.beast.envelope import validate_envelope, EnvelopeValidationError
+        from conestoga.beast.envelope import validate_envelope, EnvelopeValidationError
 
         try:
             message = json.loads(raw_message)
@@ -299,7 +299,7 @@ class BeastAdapter:
         """
         Async version of send_message that returns a correlation ID.
         """
-        from eudorus.beast.envelope import create_envelope
+        from conestoga.beast.envelope import create_envelope
         from datetime import datetime
 
         correlation_id = str(uuid.uuid4())
