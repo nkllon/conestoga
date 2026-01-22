@@ -153,8 +153,7 @@ class GeminiGateway:
 
         Uses Gemini 3 API for state-aware event generation.
         """
-        state_summary = f"""You are generating an Oregon Trail-style event for a westward "
-        "journey simulation.
+        state_summary = f"""You are generating an Oregon Trail-style event for a westward journey simulation.
 
 GAME STATE:
 - Day: {game_state.day}

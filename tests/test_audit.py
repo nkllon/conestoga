@@ -1,5 +1,3 @@
-import os
-
 from conestoga.game.audit import AuditFinding, run_heuristic_audit
 
 
