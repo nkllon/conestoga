@@ -208,7 +208,8 @@ class BeastAdapter:
             try:
                 await self._subscribe_task
             except asyncio.CancelledError:
-                pass
+                # Task cancellation is expected when stopping the adapter.
+                logging.debug("Subscribe task cancelled during async_stop (expected during shutdown).")
         if self.redis_client:
             await asyncio.to_thread(self.redis_client.close)
 
