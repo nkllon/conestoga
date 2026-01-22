@@ -3,41 +3,80 @@ Pygame UI - Main game interface
 Implements Requirements 1.3, 2.1, 10.2, 22.1-22.4
 """
 import pygame
+import random
 from typing import Optional, Tuple
 
 from .state import GameState, ItemCatalog
 from .events import EventDraft
 
-# Colors
+# Retro Pixel Art Color Palette (inspired by classic Oregon Trail)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-DARK_GREEN = (34, 139, 34)
+OFF_WHITE = (240, 234, 214)
+
+# Terrain colors
+OCEAN_BLUE = (41, 128, 185)
+PLAINS_GREEN = (118, 215, 96)
+FOREST_GREEN = (34, 153, 84)
+DESERT_TAN = (230, 176, 88)
+MOUNTAIN_GRAY = (149, 165, 166)
+RIVER_BLUE = (52, 152, 219)
+
+# UI colors
 BROWN = (139, 69, 19)
-GRAY = (128, 128, 128)
-LIGHT_GRAY = (200, 200, 200)
-RED = (220, 20, 60)
-BLUE = (70, 130, 180)
-YELLOW = (255, 215, 0)
-DARK_GRAY = (64, 64, 64)
+DARK_BROWN = (92, 64, 51)
+TAN = (210, 180, 140)
+GOLD = (255, 215, 0)
+BRIGHT_YELLOW = (241, 196, 15)
+ORANGE = (230, 126, 34)
+RED = (231, 76, 60)
+BRIGHT_RED = (192, 57, 43)
+GREEN = (39, 174, 96)
+BLUE = (52, 152, 219)
+DARK_BLUE = (41, 128, 185)
+PURPLE = (155, 89, 182)
+GRAY = (149, 165, 166)
+DARK_GRAY = (52, 73, 94)
+LIGHT_GRAY = (189, 195, 199)
 
 
 class GameUI:
     """Main UI controller for Conestoga"""
     
-    def __init__(self, width: int = 1024, height: int = 768):
+    def __init__(self, width: int = 1600, height: int = 1000):
         pygame.init()
         self.width = width
         self.height = height
         self.screen = pygame.display.set_mode((width, height))
-        pygame.display.set_caption("Conestoga - Oregon Trail Journey")
+        pygame.display.set_caption("CONESTOGA - The Oregon Trail Journey")
         
-        self.title_font = pygame.font.Font(None, 48)
-        self.heading_font = pygame.font.Font(None, 36)
-        self.body_font = pygame.font.Font(None, 28)
-        self.small_font = pygame.font.Font(None, 22)
+        # Pixel art style fonts (using default but with pixel-perfect sizing)
+        self.title_font = pygame.font.Font(None, 64)
+        self.heading_font = pygame.font.Font(None, 40)
+        self.body_font = pygame.font.Font(None, 32)
+        self.small_font = pygame.font.Font(None, 24)
+        self.tiny_font = pygame.font.Font(None, 20)
         
         self.clock = pygame.time.Clock()
         self.running = True
+        
+        # Pixel art cache for performance
+        self.icon_cache = {}
+        
+        # Event log for displaying recent events
+        self.event_log = []
+        self.log_scroll_offset = 0  # Track scroll position
+        
+        # Gemini status (set by runner)
+        self.gemini_online = True
+        
+        # Load Oregon Trail map image
+        try:
+            self.map_image = pygame.image.load('assets/oregon_trail_map.png')
+            print("[UI] Loaded Oregon Trail map image")
+        except Exception as e:
+            print(f"[UI] Failed to load map image: {e}")
+            self.map_image = None
         
     def handle_events(self):
         for event in pygame.event.get():
@@ -46,10 +85,14 @@ class GameUI:
                 return None
             elif event.type == pygame.KEYDOWN:
                 return event.key
+            elif event.type == pygame.MOUSEWHEEL:
+                # Scroll event log with mouse wheel
+                self.log_scroll_offset -= event.y  # y > 0 is scroll up, y < 0 is scroll down
+                return None
         return None
     
     def draw_text(self, text: str, font: pygame.font.Font, color: Tuple, x: int, y: int, 
-                  center: bool = False, max_width: Optional[int] = None):
+                  center: bool = False, right: bool = False, max_width: Optional[int] = None):
         if max_width:
             words = text.split(' ')
             lines = []
@@ -70,6 +113,10 @@ class GameUI:
                 surface = font.render(line, True, color)
                 if center:
                     rect = surface.get_rect(center=(x, y + i * font.get_height()))
+                elif right:
+                    rect = surface.get_rect()
+                    rect.right = x
+                    rect.top = y + i * font.get_height()
                 else:
                     rect = surface.get_rect(topleft=(x, y + i * font.get_height()))
                 self.screen.blit(surface, rect)
@@ -78,159 +125,730 @@ class GameUI:
             surface = font.render(text, True, color)
             if center:
                 rect = surface.get_rect(center=(x, y))
+            elif right:
+                rect = surface.get_rect()
+                rect.right = x
+                rect.top = y
             else:
                 rect = surface.get_rect(topleft=(x, y))
             self.screen.blit(surface, rect)
             return font.get_height()
     
-    def draw_panel(self, x: int, y: int, width: int, height: int, color: Tuple, border_color: Tuple):
+    def draw_panel(self, x: int, y: int, width: int, height: int, color: Tuple, border_color: Tuple, thick: bool = False, padding: int = 0):
+        """Draw panel with pixel art style borders"""
+        # Main background
         pygame.draw.rect(self.screen, color, (x, y, width, height))
-        pygame.draw.rect(self.screen, border_color, (x, y, width, height), 3)
+        
+        # Pixel art style border (chunky retro look)
+        border_width = 6 if thick else 4
+        pygame.draw.rect(self.screen, border_color, (x, y, width, height), border_width)
+        
+        # Inner highlight (3D effect)
+        highlight_color = tuple(min(255, c + 30) for c in color)
+        pygame.draw.line(self.screen, highlight_color, (x + border_width, y + border_width), 
+                        (x + width - border_width, y + border_width), 2)
+        pygame.draw.line(self.screen, highlight_color, (x + border_width, y + border_width), 
+                        (x + border_width, y + height - border_width), 2)
+        
+        # Return inner content area coordinates if padding requested
+        if padding:
+            return (x + border_width + padding, y + border_width + padding, 
+                   width - 2*(border_width + padding), height - 2*(border_width + padding))
+    
+    def draw_pixel_icon(self, icon_type: str, x: int, y: int, size: int = 24):
+        """Draw simple pixel art icons"""
+        if icon_type == "wagon":
+            # Wagon wheel and cover
+            pygame.draw.rect(self.screen, DARK_BROWN, (x, y + size//2, size, size//2))
+            pygame.draw.arc(self.screen, TAN, (x, y, size, size//2), 0, 3.14, 3)
+            pygame.draw.circle(self.screen, DARK_BROWN, (x + size//4, y + size - 4), 5)
+            pygame.draw.circle(self.screen, DARK_BROWN, (x + 3*size//4, y + size - 4), 5)
+        elif icon_type == "food":
+            # Bread loaf
+            pygame.draw.ellipse(self.screen, TAN, (x, y + size//3, size, 2*size//3))
+            pygame.draw.rect(self.screen, DARK_BROWN, (x + size//4, y + size//2, size//8, size//4))
+        elif icon_type == "water":
+            # Water droplet
+            points = [(x + size//2, y), (x + size, y + 2*size//3), (x + size//2, y + size), (x, y + 2*size//3)]
+            pygame.draw.polygon(self.screen, RIVER_BLUE, points)
+        elif icon_type == "ammo":
+            # Bullet
+            pygame.draw.rect(self.screen, GOLD, (x + size//3, y, size//3, 2*size//3))
+            pygame.draw.circle(self.screen, GRAY, (x + size//2, y + 2*size//3), size//4)
+        elif icon_type == "heart":
+            # Health heart
+            pygame.draw.circle(self.screen, RED, (x + size//3, y + size//3), size//3)
+            pygame.draw.circle(self.screen, RED, (x + 2*size//3, y + size//3), size//3)
+            points = [(x, y + size//3), (x + size//2, y + size), (x + size, y + size//3)]
+            pygame.draw.polygon(self.screen, RED, points)
+        elif icon_type == "mountain":
+            # Mountain peak
+            points = [(x + size//2, y), (x + size, y + size), (x, y + size)]
+            pygame.draw.polygon(self.screen, MOUNTAIN_GRAY, points)
+            points = [(x + size//2, y), (x + 3*size//4, y + size//2), (x + size//4, y + size//2)]
+            pygame.draw.polygon(self.screen, WHITE, points)
+        elif icon_type == "fort":
+            # Fort building
+            pygame.draw.rect(self.screen, DARK_BROWN, (x, y + size//3, size, 2*size//3))
+            pygame.draw.rect(self.screen, BLACK, (x + size//3, y + size//2, size//3, size//2))
+            points = [(x, y + size//3), (x + size//2, y), (x + size, y + size//3)]
+            pygame.draw.polygon(self.screen, BROWN, points)
+        elif icon_type == "cloud_off":
+            # Cloud with X (disconnected)
+            # Cloud shape
+            pygame.draw.circle(self.screen, GRAY, (x + size//4, y + size//2), size//4)
+            pygame.draw.circle(self.screen, GRAY, (x + size//2, y + size//3), size//3)
+            pygame.draw.circle(self.screen, GRAY, (x + 3*size//4, y + size//2), size//4)
+            pygame.draw.rect(self.screen, GRAY, (x + size//4, y + size//2, size//2, size//4))
+            # Red X
+            pygame.draw.line(self.screen, RED, (x + size//3, y + size//3), (x + 2*size//3, y + 2*size//3), 3)
+            pygame.draw.line(self.screen, RED, (x + 2*size//3, y + size//3), (x + size//3, y + 2*size//3), 3)
+    
+    def add_to_log(self, message: str, category: str = "info"):
+        """Add message to event log"""
+        self.event_log.append({"text": message, "category": category})
+        # Keep only last 20 messages
+        if len(self.event_log) > 20:
+            self.event_log.pop(0)
+    
+    def draw_oregon_trail_map(self, game_state: GameState, x: int, y: int, width: int, height: int):
+        """Draw Oregon Trail map using background image with wagon position overlay"""
+        if self.map_image:
+            # Scale and draw the map image
+            scaled_map = pygame.transform.scale(self.map_image, (width, height))
+            self.screen.blit(scaled_map, (x, y))
+            
+            # Calculate wagon position along the trail
+            progress = min(1.0, game_state.miles_traveled / game_state.target_miles)
+            
+            # Trail coordinates (right to left, Independence to Oregon City)
+            # WESTWARD TRAVEL = RIGHT TO LEFT
+            trail_x_start = x + width * 0.88  # Independence, MO (EAST/RIGHT)
+            trail_x_end = x + width * 0.08    # Oregon City (WEST/LEFT)
+            trail_y_start = y + height * 0.47
+            trail_y_end = y + height * 0.30
+            
+            wagon_x = int(trail_x_start + (trail_x_end - trail_x_start) * progress)
+            wagon_y = int(trail_y_start + (trail_y_end - trail_y_start) * progress)
+            
+            # Draw wagon with shadow
+            pygame.draw.ellipse(self.screen, (0, 0, 0, 100), (wagon_x - 20, wagon_y + 15, 40, 12))
+            self.draw_pixel_icon("wagon", wagon_x - 20, wagon_y - 20, 40)
+            return
+        
+        # Fallback: simple map if image not loaded
+        """Draw detailed Oregon Trail map (westward - left to right)"""
+        # Ocean background
+        pygame.draw.rect(self.screen, OCEAN_BLUE, (x, y, width, height))
+        
+        # US landmass outline (simplified)
+        # Northern border
+        land_outline = [
+            (x + 60, y + height * 0.25),    # Northeast coast
+            (x + width * 0.3, y + height * 0.18),   # Great Lakes area
+            (x + width * 0.5, y + height * 0.15),   # Northern plains
+            (x + width * 0.75, y + height * 0.2),   # Northwest
+            (x + width - 40, y + height * 0.28),    # Pacific Northwest
+            # West coast
+            (x + width - 40, y + height * 0.72),    # Oregon coast
+            # Southern border
+            (x + width * 0.8, y + height * 0.85),   # Southwest
+            (x + width * 0.5, y + height * 0.88),   # Texas area
+            (x + width * 0.25, y + height * 0.85),  # Southeast
+            (x + 80, y + height * 0.75),            # East coast south
+            (x + 60, y + height * 0.25)             # Back to start
+        ]
+        pygame.draw.polygon(self.screen, PLAINS_GREEN, land_outline)
+        
+        # Plains (eastern and central)
+        for i in range(8):
+            px = x + 60 + i * (width * 0.08)
+            py = y + height * (0.35 + (i % 3) * 0.05)
+            pw = width * 0.12
+            ph = height * 0.35
+            pygame.draw.rect(self.screen, PLAINS_GREEN, (px, py, pw, ph))
+        
+        # Desert (southwest)
+        desert_points = [
+            (x + width * 0.15, y + height * 0.7),
+            (x + width * 0.45, y + height * 0.75),
+            (x + width * 0.5, y + height * 0.88),
+            (x + width * 0.2, y + height * 0.85)
+        ]
+        pygame.draw.polygon(self.screen, DESERT_TAN, desert_points)
+        
+        # Mountain range (Rockies - central)
+        for i in range(7):
+            mx = x + width * (0.42 + i * 0.05)
+            my = y + height * (0.25 if i % 2 == 0 else 0.3)
+            mw = 35 + (i % 3) * 8
+            mh = 70 + (i % 2) * 15
+            # Mountain body
+            pygame.draw.polygon(self.screen, MOUNTAIN_GRAY, 
+                              [(mx, my + mh), (mx + mw/2, my), (mx + mw, my + mh)])
+            # Snow cap
+            pygame.draw.polygon(self.screen, WHITE,
+                              [(mx + mw/2, my), (mx + mw * 0.4, my + mh * 0.35), (mx + mw * 0.6, my + mh * 0.35)])
+        
+        # Forest (Pacific Northwest)
+        for i in range(6):
+            fx = x + width * (0.75 + (i % 3) * 0.05)
+            fy = y + height * (0.28 + (i // 3) * 0.15)
+            fw = width * 0.08
+            fh = height * 0.18
+            pygame.draw.rect(self.screen, FOREST_GREEN, (fx, fy, fw, fh))
+        
+        # Rivers
+        # Missouri River
+        pygame.draw.line(self.screen, RIVER_BLUE, (x + width * 0.2, y + height * 0.3), 
+                        (x + width * 0.28, y + height * 0.5), 6)
+        # Platte River
+        pygame.draw.line(self.screen, RIVER_BLUE, (x + width * 0.28, y + height * 0.48), 
+                        (x + width * 0.45, y + height * 0.46), 5)
+        # Snake/Columbia Rivers
+        pygame.draw.line(self.screen, RIVER_BLUE, (x + width * 0.7, y + height * 0.35), 
+                        (x + width * 0.88, y + height * 0.48), 6)
+        
+        # The Oregon Trail (empty - westward from Missouri to Oregon)
+        trail_segments = [
+            (x + width * 0.25, y + height * 0.52),   # Independence, Missouri
+            (x + width * 0.32, y + height * 0.51),   # Kansas plains
+            (x + width * 0.38, y + height * 0.49),   # Fort Kearny
+            (x + width * 0.45, y + height * 0.47),   # Platte River
+            (x + width * 0.52, y + height * 0.43),   # Chimney Rock
+            (x + width * 0.57, y + height * 0.41),   # Fort Laramie
+            (x + width * 0.63, y + height * 0.39),   # Independence Rock
+            (x + width * 0.68, y + height * 0.38),   # South Pass
+            (x + width * 0.73, y + height * 0.42),   # Fort Bridger
+            (x + width * 0.78, y + height * 0.45),   # Snake River
+            (x + width * 0.85, y + height * 0.47),   # Blue Mountains
+            (x + width * 0.92, y + height * 0.49)    # Oregon City!
+        ]
+        
+        # Draw the trail path progressively based on game progress
+        progress_ratio = min(1.0, game_state.miles_traveled / game_state.target_miles)
+        total_segments = len(trail_segments) - 1
+        completed_segments = int(progress_ratio * total_segments)
+        
+        # Completed trail segments (brown path)
+        for i in range(completed_segments):
+            pygame.draw.line(self.screen, DARK_BROWN, trail_segments[i], trail_segments[i + 1], 8)
+            # Add dotted sides to trail
+            pygame.draw.line(self.screen, TAN, 
+                           (trail_segments[i][0] - 3, trail_segments[i][1] - 3),
+                           (trail_segments[i + 1][0] - 3, trail_segments[i + 1][1] - 3), 2)
+            pygame.draw.line(self.screen, TAN,
+                           (trail_segments[i][0] + 3, trail_segments[i][1] + 3),
+                           (trail_segments[i + 1][0] + 3, trail_segments[i + 1][1] + 3), 2)
+        
+        # Partial current segment
+        if completed_segments < total_segments:
+            segment_progress = (progress_ratio * total_segments) - completed_segments
+            start = trail_segments[completed_segments]
+            end = trail_segments[completed_segments + 1]
+            partial_x = start[0] + (end[0] - start[0]) * segment_progress
+            partial_y = start[1] + (end[1] - start[1]) * segment_progress
+            pygame.draw.line(self.screen, DARK_BROWN, start, (partial_x, partial_y), 8)
+        
+        # Draw the Oregon Trail (brown path from left/east to right/west)
+        trail_points = [
+            (x + 60, y + height * 0.5),          # Start (Missouri/Independence)
+            (x + width * 0.15, y + height * 0.48),
+            (x + width * 0.25, y + height * 0.52),  # Fort Kearny area
+            (x + width * 0.35, y + height * 0.45),  # Cross river
+            (x + width * 0.42, y + height * 0.38),  # Chimney Rock
+            (x + width * 0.5, y + height * 0.35),   # Fort Laramie
+            (x + width * 0.58, y + height * 0.32),  # Mountains start
+            (x + width * 0.66, y + height * 0.36),  # Independence Rock
+            (x + width * 0.74, y + height * 0.42),  # South Pass
+            (x + width * 0.82, y + height * 0.45),  # Fort Bridger
+            (x + width * 0.9, y + height * 0.48),   # Near Oregon
+            (x + width - 40, y + height * 0.5)      # Oregon City!
+        ]
+        
+        # Draw trail segments based on progress
+        progress_ratio = min(1.0, game_state.miles_traveled / game_state.target_miles)
+        total_segments = len(trail_points) - 1
+        completed_segments = int(progress_ratio * total_segments)
+        
+        # Draw completed trail segments
+        for i in range(completed_segments):
+            pygame.draw.line(self.screen, DARK_BROWN, trail_points[i], trail_points[i + 1], 6)
+        
+        # Draw partial current segment
+        if completed_segments < total_segments:
+            segment_progress = (progress_ratio * total_segments) - completed_segments
+            start = trail_points[completed_segments]
+            end = trail_points[completed_segments + 1]
+            partial_x = start[0] + (end[0] - start[0]) * segment_progress
+            partial_y = start[1] + (end[1] - start[1]) * segment_progress
+            pygame.draw.line(self.screen, DARK_BROWN, start, (partial_x, partial_y), 6)
+        
+        # Draw landmarks on trail
+        landmarks = [
+            (0.0, "Independence", "Start", (x + 60, y + height * 0.5)),
+            (0.15, "Fort Kearny", "fort", (x + width * 0.25, y + height * 0.52)),
+            (0.35, "Chimney Rock", "mountain", (x + width * 0.42, y + height * 0.38)),
+            (0.50, "Fort Laramie", "fort", (x + width * 0.5, y + height * 0.35)),
+            (0.65, "Independence Rock", "mountain", (x + width * 0.66, y + height * 0.36)),
+            (0.82, "Fort Bridger", "fort", (x + width * 0.82, y + height * 0.45)),
+            (1.0, "Oregon City", "End", (x + width - 40, y + height * 0.5))
+        ]
+        
+        for pos, name, icon_type, (lx, ly) in landmarks:
+            if pos <= progress_ratio + 0.05:  # Show slightly ahead
+                # Draw icon
+                if icon_type == "fort":
+                    self.draw_pixel_icon(icon_type, lx - 12, ly - 32, 24)
+                elif icon_type == "mountain":
+                    self.draw_pixel_icon(icon_type, lx - 12, ly - 32, 24)
+                elif icon_type == "Start":
+                    # Draw start flag
+                    pygame.draw.rect(self.screen, DARK_BROWN, (lx - 2, ly - 30, 4, 30))
+                    pygame.draw.polygon(self.screen, GREEN, [(lx, ly - 30), (lx + 20, ly - 22), (lx, ly - 14)])
+                elif icon_type == "End":
+                    # Draw end flag  
+                    pygame.draw.rect(self.screen, DARK_BROWN, (lx - 2, ly - 30, 4, 30))
+                    pygame.draw.polygon(self.screen, GOLD, [(lx, ly - 30), (lx + 20, ly - 22), (lx, ly - 14)])
+                
+                # Draw label with background
+                label_w = self.tiny_font.size(name)[0] + 8
+                label_h = 18
+                pygame.draw.rect(self.screen, BLACK, (lx - label_w//2, ly - 48, label_w, label_h))
+                pygame.draw.rect(self.screen, GOLD, (lx - label_w//2, ly - 48, label_w, label_h), 2)
+                self.draw_text(name, self.tiny_font, OFF_WHITE, lx, ly - 38, center=True)
+        
+        # Draw wagon at current position
+        wagon_idx = min(int(progress_ratio * (len(trail_points) - 1)), len(trail_points) - 2)
+        wagon_segment_progress = (progress_ratio * (len(trail_points) - 1)) - wagon_idx
+        wagon_start = trail_points[wagon_idx]
+        wagon_end = trail_points[wagon_idx + 1]
+        wagon_x = wagon_start[0] + (wagon_end[0] - wagon_start[0]) * wagon_segment_progress
+        wagon_y = wagon_start[1] + (wagon_end[1] - wagon_start[1]) * wagon_segment_progress
+        
+        # Draw wagon with shadow
+        pygame.draw.ellipse(self.screen, (0, 0, 0, 100), (wagon_x - 20, wagon_y + 15, 40, 12))
+        self.draw_pixel_icon("wagon", wagon_x - 20, wagon_y - 20, 40)
     
     def render_travel_screen(self, game_state: GameState):
-        self.screen.fill(DARK_GREEN)
+        # Background - sky
+        self.screen.fill(OCEAN_BLUE)
         
-        self.draw_text("CONESTOGA", self.title_font, YELLOW, self.width // 2, 30, center=True)
-        self.draw_text("The Oregon Trail Journey", self.small_font, WHITE, self.width // 2, 70, center=True)
+        # === MAP AREA (Top 78%) ===
+        map_height = int(self.height * 0.78)
+        map_panel_width = self.width - 380  # Leave room for event log
         
-        self.draw_panel(50, 120, self.width - 100, 200, BROWN, YELLOW)
+        # Map panel
+        self.draw_panel(15, 15, map_panel_width, map_height - 20, TAN, DARK_BROWN, thick=True, padding=15)
         
-        y_offset = 140
-        self.draw_text(f"Day {game_state.day}  |  Miles: {game_state.miles_traveled} / {game_state.target_miles}", 
-                      self.heading_font, WHITE, 70, y_offset)
-        y_offset += 40
+        # Title in map (with padding)
+        self.draw_text("CONESTOGA - Oregon Trail", self.title_font, DARK_BROWN, map_panel_width // 2, 50, center=True)
         
-        self.draw_text(f"Location: {game_state.biome.value.title()}  |  Weather: {game_state.weather.value.title()}", 
-                      self.body_font, LIGHT_GRAY, 70, y_offset)
-        y_offset += 40
+        # Day and location info
+        self.draw_text(f"Day {game_state.day} | {game_state.biome.value.title()} | {game_state.weather.value.title()}", 
+                      self.body_font, DARK_BROWN, map_panel_width // 2, 100, center=True)
         
-        self.draw_text(f"Food: {game_state.food}  Water: {game_state.water}  Ammo: {game_state.ammo}  Money: ${game_state.money}", 
-                      self.body_font, WHITE, 70, y_offset)
-        y_offset += 35
+        # Map visualization (with spacing from progress)
+        self.draw_oregon_trail_map(game_state, 30, 135, map_panel_width - 30, map_height - 210)
         
-        self.draw_text(f"Wagon Health: {game_state.wagon_health}%", 
-                      self.body_font, WHITE if game_state.wagon_health > 50 else RED, 70, y_offset)
+        # Progress info at bottom of map
+        miles_pct = min(100, int(100 * game_state.miles_traveled / game_state.target_miles))
+        self.draw_text(f"Progress: {game_state.miles_traveled} / {game_state.target_miles} miles ({miles_pct}%)", 
+                      self.heading_font, DARK_BROWN, map_panel_width // 2, map_height - 40, center=True)
         
-        self.draw_panel(50, 350, self.width - 100, 200, DARK_GRAY, WHITE)
-        self.draw_text("Party Status", self.heading_font, YELLOW, 70, 365)
+        # === EVENT LOG (Right side) ===
+        log_x = map_panel_width + 20
+        log_width = self.width - log_x - 15
         
-        y_offset = 410
+        self.draw_panel(log_x, 15, log_width, map_height - 20, BLACK, GOLD, thick=True)
+        self.draw_text("Event Log", self.heading_font, BRIGHT_YELLOW, log_x + 20, 30)
+        
+        # Draw Gemini status indicator in event log header
+        if not self.gemini_online:
+            status_x = log_x + log_width - 90
+            status_y = 25
+            self.draw_pixel_icon("cloud_off", status_x, status_y, 24)
+            self.draw_text("AI OFF", self.tiny_font, RED, status_x + 30, status_y + 5)
+        
+        # Draw log entries with scrolling
+        log_y = 70
+        max_visible = 15
+        total_logs = len(self.event_log)
+        
+        # Clamp scroll offset
+        max_scroll = max(0, total_logs - max_visible)
+        self.log_scroll_offset = max(0, min(self.log_scroll_offset, max_scroll))
+        
+        # Get visible slice
+        start_idx = max(0, total_logs - max_visible - self.log_scroll_offset)
+        end_idx = total_logs - self.log_scroll_offset
+        visible_logs = self.event_log[start_idx:end_idx]
+        
+        for entry in visible_logs:
+            color = OFF_WHITE
+            if entry["category"] == "warning":
+                color = ORANGE
+            elif entry["category"] == "danger":
+                color = RED
+            elif entry["category"] == "success":
+                color = GREEN
+            
+            # Word wrap for log entries
+            words = entry["text"].split()
+            line = ""
+            for word in words:
+                test = line + " " + word if line else word
+                if self.tiny_font.size(test)[0] < log_width - 40:
+                    line = test
+                else:
+                    if line:
+                        self.draw_text(line, self.tiny_font, color, log_x + 20, log_y)
+                        log_y += 22
+                    line = word
+            if line:
+                self.draw_text(line, self.tiny_font, color, log_x + 20, log_y)
+                log_y += 22
+            
+            log_y += 5  # Spacing between entries
+            if log_y > map_height - 40:
+                break
+        
+        # Scroll instructions at bottom
+        scroll_y = map_height - 25
+        scroll_text = "UP/DN or wheel to scroll"
+        self.draw_text(scroll_text, self.tiny_font, GRAY, log_x + log_width // 2, scroll_y, center=True)
+        
+        # === BOTTOM PANEL (Party & Resources) ===
+        bottom_y = map_height + 5
+        bottom_height = 190  # Fixed height to fit content
+        
+        # Left: Resources
+        res_width = 480
+        self.draw_panel(15, bottom_y, res_width, bottom_height, DARK_GRAY, GOLD, thick=True)
+        self.draw_text("Resources", self.body_font, BRIGHT_YELLOW, 35, bottom_y + 10)
+        
+        # Resources with consistent spacing
+        y = bottom_y + 50
+        col1_icon_x = 35
+        col1_text_x = 68
+        col2_icon_x = 260
+        col2_text_x = 293
+        
+        # Row 1: Food and Water
+        self.draw_pixel_icon("food", col1_icon_x, y, 24)
+        self.draw_text(f"Food: {game_state.food} lbs", self.small_font, OFF_WHITE, col1_text_x, y + 2)
+        
+        self.draw_pixel_icon("water", col2_icon_x, y, 24)
+        self.draw_text(f"Water: {game_state.water}", self.small_font, OFF_WHITE, col2_text_x, y + 2)
+        
+        # Row 2: Ammo and Money
+        y += 40
+        self.draw_pixel_icon("ammo", col1_icon_x, y, 24)
+        self.draw_text(f"Ammo: {game_state.ammo}", self.small_font, OFF_WHITE, col1_text_x, y + 2)
+        
+        # Money icon (coin)
+        pygame.draw.circle(self.screen, GOLD, (col2_icon_x + 12, y + 12), 10)
+        pygame.draw.circle(self.screen, DARK_BROWN, (col2_icon_x + 12, y + 12), 8)
+        self.draw_text("$", self.tiny_font, GOLD, col2_icon_x + 12, y + 12, center=True)
+        self.draw_text(f"{game_state.money}", self.small_font, GOLD, col2_text_x, y + 2)
+        
+        # Row 3: Wagon
+        y += 40
+        wagon_color = GREEN if game_state.wagon_health > 50 else (ORANGE if game_state.wagon_health > 25 else RED)
+        self.draw_pixel_icon("wagon", col1_icon_x, y - 4, 28)
+        self.draw_text(f"Wagon: {game_state.wagon_health}%", self.small_font, wagon_color, col1_text_x, y + 2)
+        
+        # Middle: Party
+        party_x = res_width + 25
+        party_width = 650
+        self.draw_panel(party_x, bottom_y, party_width, bottom_height, DARK_GRAY, GOLD, thick=True)
+        self.draw_text("Party Status", self.body_font, BRIGHT_YELLOW, party_x + 20, bottom_y + 10)
+        
+        y = bottom_y + 50
         for member in game_state.party:
-            health_color = WHITE if member.health > 50 else (YELLOW if member.health > 20 else RED)
-            status_text = f"{member.name}: Health {member.health}%"
+            health_color = GREEN if member.health > 50 else (ORANGE if member.health > 20 else RED)
+            
+            # Name and health
+            self.draw_pixel_icon("heart", party_x + 20, y, 20)
+            self.draw_text(f"{member.name}", self.small_font, OFF_WHITE, party_x + 50, y + 2)
+            
+            # Health bar
+            bar_x = party_x + 180
+            bar_w = 180
+            bar_h = 16
+            pygame.draw.rect(self.screen, BLACK, (bar_x, y + 3, bar_w, bar_h), 2)
+            filled = int(bar_w * member.health / 100)
+            if filled > 0:
+                pygame.draw.rect(self.screen, health_color, (bar_x + 2, y + 5, filled - 4, bar_h - 4))
+            
+            # Health %
+            self.draw_text(f"{member.health}%", self.tiny_font, health_color, bar_x + bar_w + 8, y + 4)
+            
+            # Status
             if member.status_conditions:
-                status_text += f" [{', '.join(member.status_conditions)}]"
-            self.draw_text(status_text, self.small_font, health_color, 70, y_offset)
-            y_offset += 30
+                status = ", ".join(member.status_conditions[:2])
+                self.draw_text(f"[{status}]", self.tiny_font, RED, party_x + 450, y + 4)
+            
+            y += 35
         
-        self.draw_panel(50, 580, self.width - 100, 150, BLACK, WHITE)
-        self.draw_text("Press SPACE to continue travel", self.body_font, WHITE, 70, 600)
-        self.draw_text("Press I to view inventory", self.body_font, WHITE, 70, 635)
-        self.draw_text("Press Q to quit", self.body_font, WHITE, 70, 670)
+        # Right: Controls
+        ctrl_x = party_x + party_width + 10
+        ctrl_width = self.width - ctrl_x - 15
+        self.draw_panel(ctrl_x, bottom_y, ctrl_width, bottom_height, BLACK, GOLD, thick=True)
+        self.draw_text("Controls", self.body_font, BRIGHT_YELLOW, ctrl_x + ctrl_width // 2, bottom_y + 18, center=True)
+        
+        # Horizontal layout - all controls in one row, evenly spaced and centered
+        y = bottom_y + 70
+        padding = 20
+        available_width = ctrl_width - 2 * padding
+        col_width = available_width // 3
+        
+        col1_center = ctrl_x + padding + col_width // 2
+        col2_center = ctrl_x + padding + col_width + col_width // 2
+        col3_center = ctrl_x + padding + 2 * col_width + col_width // 2
+        
+        # SPACE - Travel
+        self.draw_text("[SPACE]", self.small_font, BRIGHT_YELLOW, col1_center, y, center=True)
+        self.draw_text("Travel", self.tiny_font, OFF_WHITE, col1_center, y + 25, center=True)
+        
+        # I - Inventory
+        self.draw_text("[I]", self.small_font, BRIGHT_YELLOW, col2_center, y, center=True)
+        self.draw_text("Inventory", self.tiny_font, OFF_WHITE, col2_center, y + 25, center=True)
+        
+        # Q - Quit
+        self.draw_text("[Q]", self.small_font, BRIGHT_YELLOW, col3_center, y, center=True)
+        self.draw_text("Quit", self.tiny_font, OFF_WHITE, col3_center, y + 25, center=True)
         
     def render_event_screen(self, event: EventDraft, game_state: GameState, selected_choice: int = 0):
-        self.screen.fill(BLACK)
+        # Dramatic dark background
+        self.screen.fill(DARK_GRAY)
         
-        self.draw_text(event.title, self.title_font, YELLOW, self.width // 2, 40, center=True)
+        # Event title banner
+        self.draw_panel(self.width // 2 - 400, 20, 800, 90, DARK_BROWN, BRIGHT_RED, thick=True)
+        self.draw_text("*** EVENT ***", self.heading_font, BRIGHT_YELLOW, self.width // 2, 35, center=True)
+        self.draw_text(event.title, self.title_font, OFF_WHITE, self.width // 2, 75, center=True)
         
-        self.draw_panel(50, 100, self.width - 100, 200, DARK_GRAY, WHITE)
-        self.draw_text(event.narrative, self.body_font, WHITE, 70, 120, max_width=self.width - 140)
+        # Narrative panel
+        self.draw_panel(40, 130, self.width - 80, 200, BLACK, ORANGE, thick=True)
+        self.draw_text(event.narrative, self.body_font, OFF_WHITE, 70, 155, max_width=self.width - 140)
         
-        self.draw_text("Choose your action:", self.heading_font, YELLOW, 70, 330)
+        # Choices header
+        self.draw_panel(40, 350, self.width - 80, 60, DARK_BLUE, BRIGHT_YELLOW)
+        self.draw_text("Choose Your Action:", self.heading_font, OFF_WHITE, 60, 365)
         
-        y_offset = 380
+        y_offset = 430
         for i, choice in enumerate(event.choices):
             is_available = choice.is_available(game_state)
             is_selected = i == selected_choice
             
-            choice_height = 60
-            bg_color = BLUE if is_selected else DARK_GRAY
+            choice_height = 70
+            
+            # Choice button styling
             if not is_available:
                 bg_color = GRAY
+                border_color = DARK_GRAY
+            elif is_selected:
+                bg_color = ORANGE
+                border_color = BRIGHT_YELLOW
+            else:
+                bg_color = DARK_BROWN
+                border_color = TAN
             
-            self.draw_panel(50, y_offset, self.width - 100, choice_height, bg_color, YELLOW if is_selected else WHITE)
+            self.draw_panel(40, y_offset, self.width - 80, choice_height, bg_color, border_color, thick=is_selected)
             
-            choice_text = f"{i + 1}. {choice.text}"
-            text_color = WHITE if is_available else DARK_GRAY
-            self.draw_text(choice_text, self.body_font, text_color, 70, y_offset + 10, max_width=self.width - 140)
+            # Choice number badge
+            badge_size = 40
+            badge_x = 55
+            badge_y = y_offset + 15
+            pygame.draw.circle(self.screen, border_color, (badge_x + badge_size//2, badge_y + badge_size//2), badge_size//2)
+            pygame.draw.circle(self.screen, bg_color if is_selected else BLACK, (badge_x + badge_size//2, badge_y + badge_size//2), badge_size//2 - 4)
+            self.draw_text(str(i + 1), self.heading_font, border_color, badge_x + badge_size//2, badge_y + badge_size//2 + 2, center=True)
             
+            # Choice text
+            choice_text = choice.text
+            text_color = OFF_WHITE if is_available else DARK_GRAY
+            self.draw_text(choice_text, self.body_font, text_color, 115, y_offset + 15, max_width=self.width - 180)
+            
+            # Lock reason
             if not is_available:
                 lock_reason = choice.get_lock_reason(game_state)
                 if lock_reason:
-                    self.draw_text(f"  {lock_reason}", self.small_font, RED, 70, y_offset + 35)
+                    self.draw_text(f"🔒 {lock_reason}", self.small_font, BRIGHT_RED, 115, y_offset + 45)
             
-            y_offset += choice_height + 10
+            y_offset += choice_height + 12
         
-        y_offset += 20
-        self.draw_text("Use UP/DOWN arrows to select, ENTER to confirm", self.small_font, LIGHT_GRAY, self.width // 2, y_offset, center=True)
+        # Controls hint
+        y_offset += 10
+        self.draw_text("[UP/DOWN] Navigate  |  [ENTER] Confirm", self.body_font, LIGHT_GRAY, self.width // 2, y_offset, center=True)
+    
+    def render_loading_screen(self, elapsed_time: float):
+        """Req 10.2: Lightweight loading state during async event generation"""
+        # Prairie sunset background
+        self.screen.fill(DARK_BLUE)
+        pygame.draw.rect(self.screen, ORANGE, (0, self.height // 2, self.width, self.height // 2))
+        
+        # Loading banner
+        self.draw_panel(self.width // 2 - 350, 150, 700, 120, DARK_BROWN, BRIGHT_YELLOW, thick=True)
+        self.draw_text("🎲 Generating Event...", self.title_font, BRIGHT_YELLOW, self.width // 2, 180, center=True)
+        
+        # Animated loading text
+        dots = "." * (int(elapsed_time * 2) % 4) + " " * (3 - int(elapsed_time * 2) % 4)
+        loading_text = f"Gemini 3 AI at work{dots}"
+        self.draw_text(loading_text, self.heading_font, OFF_WHITE, self.width // 2, 235, center=True)
+        
+        # Animated wagon train
+        wagon_x = (int(elapsed_time * 100) % (self.width + 200)) - 100
+        wagon_y = 350
+        
+        # Draw multiple wagons
+        for i in range(3):
+            wx = wagon_x - i * 150
+            if 0 <= wx <= self.width:
+                self.draw_pixel_icon("wagon", wx, wagon_y, 48)
+        
+        # Progress indicator
+        elapsed_display = f"⏱️ {elapsed_time:.1f}s"
+        self.draw_text(elapsed_display, self.body_font, LIGHT_GRAY, self.width // 2, 450, center=True)
+        
+        # Spinning compass/wheel
+        wheel_center = (self.width // 2, 550)
+        wheel_radius = 50
+        angle = (elapsed_time * 180) % 360
+        
+        # Outer ring
+        pygame.draw.circle(self.screen, DARK_BROWN, wheel_center, wheel_radius, 6)
+        
+        # Spokes
+        for i in range(8):
+            spoke_angle = (angle + i * 45) * 3.14159 / 180
+            end_x = wheel_center[0] + int(wheel_radius * pygame.math.Vector2(1, 0).rotate(spoke_angle * 180 / 3.14159).x)
+            end_y = wheel_center[1] + int(wheel_radius * pygame.math.Vector2(1, 0).rotate(spoke_angle * 180 / 3.14159).y)
+            pygame.draw.line(self.screen, TAN, wheel_center, (end_x, end_y), 4)
+        
+        # Center hub
+        pygame.draw.circle(self.screen, DARK_BROWN, wheel_center, 12)
+        pygame.draw.circle(self.screen, GOLD, wheel_center, 8)
+        
+        # Hint (Req 10.5)
+        self.draw_text("[ESC] Use Fallback Event", self.body_font, LIGHT_GRAY, self.width // 2, 650, center=True)
     
     def render_resolution_screen(self, resolution_text: str):
-        self.screen.fill(BLACK)
+        # Parchment-style background
+        self.screen.fill(DARK_GRAY)
         
-        self.draw_text("Outcome", self.title_font, YELLOW, self.width // 2, 40, center=True)
+        # Outcome banner
+        self.draw_panel(self.width // 2 - 300, 30, 600, 90, DARK_BROWN, GOLD, thick=True)
+        self.draw_text("*** OUTCOME ***", self.title_font, BRIGHT_YELLOW, self.width // 2, 75, center=True)
         
-        self.draw_panel(50, 150, self.width - 100, 400, DARK_GRAY, WHITE)
-        self.draw_text(resolution_text, self.body_font, WHITE, 70, 180, max_width=self.width - 140)
+        # Story panel (parchment style)
+        self.draw_panel(80, 150, self.width - 160, 450, TAN, DARK_BROWN, thick=True)
         
-        self.draw_text("Press SPACE to continue...", self.body_font, YELLOW, self.width // 2, 600, center=True)
+        # Decorative corners
+        corner_size = 20
+        corners = [(90, 160), (self.width - 110, 160), (90, 580), (self.width - 110, 580)]
+        for cx, cy in corners:
+            pygame.draw.rect(self.screen, DARK_BROWN, (cx, cy, corner_size, corner_size))
+        
+        # Resolution text
+        self.draw_text(resolution_text, self.body_font, DARK_BROWN, 120, 200, max_width=self.width - 240)
+        
+        # Continue prompt
+        self.draw_panel(self.width // 2 - 250, 650, 500, 70, DARK_BLUE, BRIGHT_YELLOW, thick=True)
+        self.draw_text("[SPACE] Continue Journey", self.heading_font, OFF_WHITE, self.width // 2, 685, center=True)
     
     def render_game_over_screen(self, game_state: GameState):
-        self.screen.fill(BLACK)
-        
         if game_state.victory:
-            title = "Victory!"
-            message = f"You reached Oregon after {game_state.day} days!"
-            color = YELLOW
+            self.screen.fill(PLAINS_GREEN)
+            title = "🎉 VICTORY! 🎉"
+            message = f"You reached Oregon City after {game_state.day} days!"
+            banner_color = DARK_BLUE
+            border_color = GOLD
         else:
-            title = "Game Over"
+            self.screen.fill(DARK_GRAY)
+            title = "💀 GAME OVER 💀"
             if game_state.food <= 0:
-                message = "Your party starved on the trail."
+                message = "Your party starved on the trail..."
             else:
-                message = "Your party did not survive the journey."
-            color = RED
+                message = "Your party did not survive the journey..."
+            banner_color = BLACK
+            border_color = BRIGHT_RED
         
-        self.draw_text(title, self.title_font, color, self.width // 2, 200, center=True)
-        self.draw_text(message, self.heading_font, WHITE, self.width // 2, 270, center=True)
+        # Title banner
+        self.draw_panel(self.width // 2 - 400, 100, 800, 120, banner_color, border_color, thick=True)
+        self.draw_text(title, self.title_font, border_color, self.width // 2, 160, center=True)
         
-        y_offset = 350
-        self.draw_text(f"Days Traveled: {game_state.day}", self.body_font, WHITE, self.width // 2, y_offset, center=True)
-        y_offset += 40
-        self.draw_text(f"Miles Covered: {game_state.miles_traveled}", self.body_font, WHITE, self.width // 2, y_offset, center=True)
-        y_offset += 40
+        # Message
+        self.draw_text(message, self.heading_font, OFF_WHITE, self.width // 2, 260, center=True)
+        
+        # Stats panel
+        self.draw_panel(self.width // 2 - 350, 340, 700, 280, TAN, DARK_BROWN, thick=True)
+        self.draw_text("📊 JOURNEY STATISTICS", self.heading_font, DARK_BROWN, self.width // 2, 365, center=True)
+        
+        y_offset = 420
+        self.draw_text(f"📅 Days Traveled: {game_state.day}", self.body_font, DARK_BROWN, self.width // 2 - 200, y_offset)
+        y_offset += 50
+        self.draw_text(f"🗺️  Miles Covered: {game_state.miles_traveled}", self.body_font, DARK_BROWN, self.width // 2 - 200, y_offset)
+        y_offset += 50
+        
         survivors = len([m for m in game_state.party if m.health > 0])
-        self.draw_text(f"Survivors: {survivors} / {len(game_state.party)}", self.body_font, WHITE, self.width // 2, y_offset, center=True)
+        survivor_color = GREEN if survivors > 2 else (ORANGE if survivors > 0 else RED)
+        self.draw_text(f"👥 Survivors: {survivors} / {len(game_state.party)}", self.body_font, survivor_color, self.width // 2 - 200, y_offset)
         
-        self.draw_text("Press R to restart or Q to quit", self.body_font, YELLOW, self.width // 2, 550, center=True)
+        # Controls
+        self.draw_panel(self.width // 2 - 300, 660, 600, 80, BLACK, GOLD, thick=True)
+        self.draw_text("[R] Restart  •  [Q] Quit", self.heading_font, BRIGHT_YELLOW, self.width // 2, 700, center=True)
     
     def render_inventory_screen(self, game_state: GameState, item_catalog: ItemCatalog):
-        self.screen.fill(BLACK)
+        # Inventory background
+        self.screen.fill(DARK_BROWN)
         
-        self.draw_text("Inventory", self.title_font, YELLOW, self.width // 2, 40, center=True)
+        # Title
+        self.draw_panel(self.width // 2 - 250, 20, 500, 80, TAN, GOLD, thick=True)
+        self.draw_text("🎒 INVENTORY 🎒", self.title_font, DARK_BROWN, self.width // 2, 60, center=True)
         
-        self.draw_panel(50, 120, self.width - 100, 150, DARK_GRAY, WHITE)
-        self.draw_text("Resources", self.heading_font, YELLOW, 70, 135)
-        y_offset = 175
-        self.draw_text(f"Food: {game_state.food} lbs", self.body_font, WHITE, 70, y_offset)
-        self.draw_text(f"Water: {game_state.water} gallons", self.body_font, WHITE, 400, y_offset)
-        y_offset += 35
-        self.draw_text(f"Ammunition: {game_state.ammo} rounds", self.body_font, WHITE, 70, y_offset)
-        self.draw_text(f"Money: ${game_state.money}", self.body_font, WHITE, 400, y_offset)
+        # Resources panel
+        self.draw_panel(40, 120, self.width - 80, 180, TAN, DARK_BROWN, thick=True)
+        self.draw_text("Resources", self.heading_font, DARK_BROWN, 70, 140)
         
-        self.draw_panel(50, 300, self.width - 100, 350, DARK_GRAY, WHITE)
-        self.draw_text("Items", self.heading_font, YELLOW, 70, 315)
+        y = 190
+        self.draw_pixel_icon("food", 70, y, 32)
+        self.draw_text(f"Food: {game_state.food} lbs", self.body_font, DARK_BROWN, 115, y + 5)
         
-        y_offset = 360
+        self.draw_pixel_icon("water", 450, y, 32)
+        self.draw_text(f"Water: {game_state.water} gal", self.body_font, DARK_BROWN, 495, y + 5)
+        
+        self.draw_pixel_icon("ammo", 830, y, 32)
+        self.draw_text(f"Ammo: {game_state.ammo}", self.body_font, DARK_BROWN, 875, y + 5)
+        
+        y += 55
+        self.draw_pixel_icon("wagon", 70, y, 32)
+        self.draw_text(f"Wagon: {game_state.wagon_health}%", self.body_font, DARK_BROWN, 115, y + 5)
+        
+        self.draw_text(f"Money: ${game_state.money}", self.body_font, ORANGE, 450, y + 5)
+        
+        # Items panel
+        self.draw_panel(40, 320, self.width - 80, 400, TAN, DARK_BROWN, thick=True)
+        self.draw_text("Special Items", self.heading_font, DARK_BROWN, 70, 340)
+        
+        y_offset = 390
         if game_state.inventory:
+            col = 0
             for item_id, quantity in sorted(game_state.inventory.items()):
                 item_name = item_catalog.get_name(item_id)
-                self.draw_text(f"{item_name} x{quantity}", self.body_font, WHITE, 70, y_offset)
-                y_offset += 35
-                if y_offset > 620:
-                    break
+                x = 70 + (col * 350)
+                self.draw_text(f"• {item_name} x{quantity}", self.body_font, DARK_BROWN, x, y_offset)
+                
+                col += 1
+                if col >= 3:
+                    col = 0
+                    y_offset += 40
+                    if y_offset > 680:
+                        break
         else:
-            self.draw_text("No items", self.body_font, GRAY, 70, y_offset)
+            self.draw_text("No special items", self.body_font, GRAY, 70, y_offset)
         
-        self.draw_text("Press ESC to return", self.small_font, LIGHT_GRAY, self.width // 2, 680, center=True)
+        # Return hint
+        self.draw_text("[ESC] Return to Trail", self.body_font, OFF_WHITE, self.width // 2, 750, center=True)
     
     def update(self):
         pygame.display.flip()

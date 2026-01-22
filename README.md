@@ -1,14 +1,20 @@
 # Conestoga
 
-An Oregon Trail-inspired journey simulation with Gemini-powered dynamic events, built with modern Python tooling.
+An Oregon Trail-inspired journey simulation with **Gemini 3 API** dynamic events, built with modern Python tooling.
 
 ## 🎮 Playable Game
 
-A pygame-based prototype demonstrating structured Gemini integration with validation pipelines and fallback behavior.
+A pygame-based prototype demonstrating structured Gemini 3 integration with validation pipelines and fallback behavior.
+
+**Requirements:**
+- Gemini 3 API (`gemini-3-flash-preview` or `gemini-3-pro-preview`)
+- Python 3.12+
+- GEMINI_API_KEY environment variable (optional - fallback mode available)
 
 **Quick Start:**
 ```bash
 uv sync
+export GEMINI_API_KEY='your-key-here'  # Optional
 conestoga
 ```
 
@@ -16,9 +22,10 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed instructions and contr
 
 ## Features
 
-- **Gemini-Powered Events**: Dynamic event generation with structured JSON outputs (fallback mode available)
+- **Gemini 3 API Integration**: Dynamic event generation using exclusively Gemini 3 models (preview APIs supported)
+- **Structured Event Generation**: Schema-validated JSON outputs for deterministic gameplay
 - **Deterministic Simulation**: Authoritative game state with invariant enforcement
-- **Validation Pipeline**: Schema validation, item catalog checks, and safety filters
+- **Validation Pipeline**: Schema validation, item catalog checks, and safety filters with automatic fallback
 - **UV Package Management**: Modern Python package manager for fast, reliable dependency resolution
 - **Ontology Management**: RDF and OWL tools for semantic web applications (in `src/conestoga/`)
 - **GCP Integration**: Google Cloud Storage client library
@@ -28,6 +35,7 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed instructions and contr
 ## Prerequisites
 
 - Python 3.12+
+- Gemini 3 API key (get one at [Google AI Studio](https://aistudio.google.com/))
 - UV package manager (recommended)
 - Node.js (for npm packages, optional)
 - 1Password CLI (optional, for secrets management)

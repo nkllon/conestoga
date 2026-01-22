@@ -141,12 +141,23 @@ def test_fallback_deck():
 
 def test_gemini_gateway_fallback():
     """Test that GeminiGateway falls back when no API key"""
-    gateway = GeminiGateway(api_key=None)
-    state = GameState()
-    catalog = ItemCatalog()
+    import os
+    # Save and clear any existing API key to test fallback
+    old_key = os.environ.get('GEMINI_API_KEY')
+    if old_key:
+        del os.environ['GEMINI_API_KEY']
     
-    assert not gateway.is_online()
-    
-    event = gateway.generate_event_draft(state, catalog)
-    assert event is not None
-    assert event.event_id.startswith("fallback_")
+    try:
+        gateway = GeminiGateway(api_key=None)
+        state = GameState()
+        catalog = ItemCatalog()
+        
+        assert not gateway.is_online()
+        
+        event = gateway.generate_event_draft(state, catalog)
+        assert event is not None
+        assert event.event_id.startswith("fallback_")
+    finally:
+        # Restore the original API key
+        if old_key:
+            os.environ['GEMINI_API_KEY'] = old_key
