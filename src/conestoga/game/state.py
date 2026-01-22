@@ -124,6 +124,9 @@ class GameState:
         return True
 
     def modify_resource(self, resource: str, delta: int):
+        allowed_resources = {"food", "water", "ammo", "money", "wagon_health"}
+        if resource not in allowed_resources:
+            raise ValueError(f"Unknown resource: {resource}")
         current = getattr(self, resource, 0)
         new_value = max(0, current + delta)
         setattr(self, resource, new_value)

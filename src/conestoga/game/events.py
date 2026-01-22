@@ -141,6 +141,20 @@ class EventDraft:
         if not self.choices:
             errors.append("No choices provided")
 
+        if self.choices:
+            if len(self.choices) < 2 or len(self.choices) > 3:
+                errors.append("Choices must be between 2 and 3 options")
+
+            seen_ids = set()
+            for choice in self.choices:
+                if not choice.id:
+                    errors.append("Choice id is required")
+                if choice.id in seen_ids:
+                    errors.append(f"Duplicate choice id: {choice.id}")
+                seen_ids.add(choice.id)
+                if not choice.text or not choice.text.strip():
+                    errors.append(f"Choice text missing for id {choice.id or '<unknown>'}")
+
         for choice in self.choices:
             for prereq in choice.prerequisites:
                 if prereq.type == "has_item" and prereq.target:

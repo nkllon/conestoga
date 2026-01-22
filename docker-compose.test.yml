@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  test-redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    restart: unless-stopped
+
+  test-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: conestoga
+      POSTGRES_PASSWORD: conestoga
+      POSTGRES_DB: conestoga_test
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conestoga"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Example ephemeral service; extend or remove as needed
+  test-minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: conestoga
+      MINIO_ROOT_PASSWORD: conestoga123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
