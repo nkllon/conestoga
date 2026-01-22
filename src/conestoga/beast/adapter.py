@@ -1,11 +1,12 @@
-import redis
-import time
+import asyncio
+import json
 import logging
 import threading
-import json
-import asyncio
+import time
 import uuid
-from typing import Optional, Callable, Dict
+from collections.abc import Callable
+
+import redis
 
 from conestoga.hacp.interceptor import HACPViolationError
 
@@ -27,8 +28,8 @@ class BeastAdapter:
         self.observability = observability_stack
         self.hacp_interceptor = hacp_interceptor
         self.handlers = {}  # Initialize handlers dictionary
-        self.pending_replies: Dict[str, asyncio.Future] = {}  # For async reply handling
-        self._subscribe_task: Optional[asyncio.Task] = None
+        self.pending_replies: dict[str, asyncio.Future] = {}  # For async reply handling
+        self._subscribe_task: asyncio.Task | None = None
 
     def connect(self):
         """
@@ -102,7 +103,7 @@ class BeastAdapter:
         """
         Deserializes and routes an incoming message.
         """
-        from conestoga.beast.envelope import validate_envelope, EnvelopeValidationError
+        from conestoga.beast.envelope import EnvelopeValidationError, validate_envelope
 
         try:
             message = json.loads(raw_message)
@@ -174,7 +175,8 @@ class BeastAdapter:
             ).inc()
 
         try:
-            channel = "beast:global:messages"  # Default channel, could be dynamic based on message content
+            # Default channel, could be dynamic based on message content
+            channel = "beast:global:messages"
             self.redis_client.publish(channel, json.dumps(message))
         except redis.exceptions.ConnectionError:
             logging.error("Failed to send message due to connection error.")
@@ -186,7 +188,8 @@ class BeastAdapter:
         Connects and starts listening for messages.
         """
         self.connect()
-        # The subscription loop should ideally run in a separate thread to not block the main process
+        # The subscription loop should run in a separate thread to not
+        # block the main process
         subscribe_thread = threading.Thread(target=self._subscribe, daemon=True)
         subscribe_thread.start()
 
@@ -209,7 +212,10 @@ class BeastAdapter:
                 await self._subscribe_task
             except asyncio.CancelledError:
                 # Task cancellation is expected when stopping the adapter.
-                logging.debug("Subscribe task cancelled during async_stop (expected during shutdown).")
+                logging.debug(
+                    "Subscribe task cancelled during async_stop "
+                    "(expected during shutdown)."
+                )
         if self.redis_client:
             await asyncio.to_thread(self.redis_client.close)
 
@@ -235,7 +241,7 @@ class BeastAdapter:
         """
         Async version of message handler.
         """
-        from conestoga.beast.envelope import validate_envelope, EnvelopeValidationError
+        from conestoga.beast.envelope import EnvelopeValidationError, validate_envelope
 
         try:
             message = json.loads(raw_message)
@@ -299,8 +305,8 @@ class BeastAdapter:
         """
         Async version of send_message that returns a correlation ID.
         """
+
         from conestoga.beast.envelope import create_envelope
-        from datetime import datetime
 
         correlation_id = str(uuid.uuid4())
         payload["correlation_id"] = correlation_id
@@ -355,7 +361,7 @@ class BeastAdapter:
         try:
             result = await asyncio.wait_for(future, timeout=timeout)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.pending_replies.pop(correlation_id, None)
             raise
 
