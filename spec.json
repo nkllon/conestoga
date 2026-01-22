@@ -1,0 +1,22 @@
+{
+  "feature_name": "conestoga",
+  "created_at": "2026-01-17T17:18:04.1266766-08:00",
+  "updated_at": "2026-01-17T19:04:38.5248857-08:00",
+  "language": "en",
+  "phase": "design-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false
+}

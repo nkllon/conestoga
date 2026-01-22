@@ -1,11 +1,26 @@
-# conestoga
+# Conestoga
 
-A Python project with ontology management tools, Google Cloud Platform integration, and development utilities.
+An Oregon Trail-inspired journey simulation with Gemini-powered dynamic events, built with modern Python tooling.
+
+## 🎮 Playable Game
+
+A pygame-based prototype demonstrating structured Gemini integration with validation pipelines and fallback behavior.
+
+**Quick Start:**
+```bash
+uv sync
+conestoga
+```
+
+See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed instructions and controls.
 
 ## Features
 
+- **Gemini-Powered Events**: Dynamic event generation with structured JSON outputs (fallback mode available)
+- **Deterministic Simulation**: Authoritative game state with invariant enforcement
+- **Validation Pipeline**: Schema validation, item catalog checks, and safety filters
 - **UV Package Management**: Modern Python package manager for fast, reliable dependency resolution
-- **Ontology Management**: RDF and OWL tools for semantic web applications
+- **Ontology Management**: RDF and OWL tools for semantic web applications (in `src/conestoga/`)
 - **GCP Integration**: Google Cloud Storage client library
 - **Environment Management**: Python-dotenv for configuration
 - **Development Tools**: Makefile for common tasks
@@ -13,8 +28,8 @@ A Python project with ontology management tools, Google Cloud Platform integrati
 ## Prerequisites
 
 - Python 3.12+
-- Node.js (for npm packages)
-- UV package manager
+- UV package manager (recommended)
+- Node.js (for npm packages, optional)
 - 1Password CLI (optional, for secrets management)
 - GCP CLI (optional, for Google Cloud operations)
 
