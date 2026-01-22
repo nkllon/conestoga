@@ -5,15 +5,15 @@ Provides Beast messaging integration with HACP governance, observability,
 and semantic alignment for the Eudorus platform.
 """
 
-from eudorus.beast.adapter import BeastAdapter
-from eudorus.beast.envelope import (
+from conestoga.beast.adapter import BeastAdapter
+from conestoga.beast.envelope import (
     BeastEnvelope,
     validate_envelope,
     create_envelope,
     EnvelopeValidationError,
 )
-from eudorus.beast.observability import ObservabilityStack
-from eudorus.beast.semantics import SemanticAlignmentLayer, BEAST, EUDORUS
+from conestoga.beast.observability import ObservabilityStack
+from conestoga.beast.semantics import SemanticAlignmentLayer, BEAST, EUDORUS
 
 __all__ = [
     "BeastAdapter",
