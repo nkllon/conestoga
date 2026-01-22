@@ -63,14 +63,22 @@ def _json_compact(obj: Any) -> str:
 
 @dataclass(frozen=True)
 class GeminiEventServiceConfig:
-    model: str = "gemini-3-flash-preview"  # Gemini API docs show this model id
+    # Default to a preview model but allow override via environment variable so that
+    # deployments can switch models if this preview becomes unavailable.
+    model: str = os.getenv("GEMINI_MODEL_ID", "gemini-3-flash-preview")
     thinking_level: str = "low"            # "minimal/low/medium/high" depending on model
     max_output_tokens: int = 2048
     # retry logic
     max_attempts: int = 3
     initial_backoff_s: float = 0.6
 
-
+    def __post_init__(self) -> None:
+        # Basic validation to ensure we fail fast if the model id is missing or empty.
+        if not isinstance(self.model, str) or not self.model.strip():
+            raise ValueError(
+                "GeminiEventServiceConfig.model must be a non-empty string. "
+                "Set GEMINI_MODEL_ID to a valid Gemini model id."
+            )
 class GeminiEventServiceError(RuntimeError):
     pass
 
