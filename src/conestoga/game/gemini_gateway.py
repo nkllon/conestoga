@@ -153,7 +153,9 @@ class GeminiGateway:
 
         Uses Gemini 3 API for state-aware event generation.
         """
-        state_summary = f"""You are generating an Oregon Trail-style event for a westward journey simulation.
+        state_summary = (
+            f"""You are generating an Oregon Trail-style event for a """
+            f"""westward journey simulation.
 
 GAME STATE:
 - Day: {game_state.day}
@@ -187,6 +189,7 @@ Return ONLY a valid JSON object with this exact structure:
 }}
 
 IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanation."""
+        )
         return state_summary
 
     def _build_resolution_prompt(

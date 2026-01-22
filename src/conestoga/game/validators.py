@@ -5,16 +5,15 @@ Enforces choice counts, uniqueness, and effect targeting against the catalog.
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 
 from .events import Effect, EffectType, EventDraft
 from .state import ItemCatalog
 
-
 ALLOWED_RESOURCES = {"food", "water", "money", "ammo", "wagon_health"}
 
 
-def validate_choices(event: EventDraft) -> List[str]:
+def validate_choices(event: EventDraft) -> list[str]:
     """Validate event choices for count, uniqueness, and text."""
     errors: list[str] = []
     choices = event.choices
@@ -33,7 +32,7 @@ def validate_choices(event: EventDraft) -> List[str]:
     return errors
 
 
-def validate_effects(effects: Iterable[Effect], item_catalog: ItemCatalog) -> List[str]:
+def validate_effects(effects: Iterable[Effect], item_catalog: ItemCatalog) -> list[str]:
     """Validate effects against allowed operations, resources, and catalog items."""
     errors: list[str] = []
     for eff in effects:
@@ -68,7 +67,9 @@ def validate_effects(effects: Iterable[Effect], item_catalog: ItemCatalog) -> Li
     return errors
 
 
-def validate_effect_targets(effects: Optional[Iterable[Effect]], item_catalog: ItemCatalog) -> List[str]:
+def validate_effect_targets(
+    effects: Iterable[Effect] | None, item_catalog: ItemCatalog
+) -> list[str]:
     """Wrapper to handle None effects collections safely."""
     if not effects:
         return []

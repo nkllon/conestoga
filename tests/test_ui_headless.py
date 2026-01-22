@@ -5,9 +5,9 @@ def test_gameui_loading_and_event_render_headless(monkeypatch):
     # Run Pygame headless (default for tests)
     monkeypatch.setenv("UI_HEADLESS", "1")
 
-    from conestoga.game.ui import GameUI  # imported after env vars set
+    from conestoga.game.events import Choice, EventDraft
     from conestoga.game.state import GameState
-    from conestoga.game.events import EventDraft, Choice
+    from conestoga.game.ui import GameUI  # imported after env vars set
 
     ui = GameUI(width=800, height=600)
     state = GameState()
