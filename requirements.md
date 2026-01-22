@@ -3,6 +3,8 @@
 ## Introduction
 Conestoga is a scope-controlled, Oregon Trail-inspired journey simulation with a simple overland travel loop (grid-based travel, resources, party, inventory), where nearly all trail events are generated dynamically by the Gemini 3 API as structured, machine-actionable JSON. Events are historically grounded, responsive to game state (inventory, party, location, weather, time), and enforce deterministic rules (requirements, checks, effects) so the game remains stable, testable, and safe.
 
+**API Version Requirement:** All Gemini API integrations MUST use Gemini 3 models exclusively. Preview APIs (e.g., `gemini-3-flash-preview`, `gemini-3-pro-preview`) are acceptable and encouraged for access to the latest features. Earlier model versions (Gemini 2.x, Gemini 1.x) are explicitly NOT supported.
+
 The core "wow" is causal continuity: if the player acquires an item (e.g., shovel) through a Gemini-generated trade event, later Gemini-generated events can meaningfully reference it, but the game engine remains the source of truth for whether an interaction is possible.
 
 Gemini is used to generate EventDrafts (narrative, options, requirements) and EventResolutions (outcomes, deltas, items, status changes) under strict schemas and validation loops.
@@ -13,6 +15,7 @@ Gemini is used to generate EventDrafts (narrative, options, requirements) and Ev
   - structured outputs (schema-constrained JSON)
   - deterministic validation and self-repair loop
   - stateful continuity (event history impacts future events)
+  - **REQUIRED:** Use Gemini 3 models exclusively (preview APIs acceptable)
 - Demonstrate Gemini 3 features as central to gameplay, including structured outputs, thinking controls, and safety settings.
 - Keep gameplay scope intentionally minimal while ensuring high reliability and polish.
 
