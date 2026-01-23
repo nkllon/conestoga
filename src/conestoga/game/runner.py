@@ -237,16 +237,31 @@ class ConestogaGame:
         if not resolution:
             self.current_resolution = "You make your choice and move on."
         else:
+            # Track resources before resolution
+            old_food = self.game_state.food
+            old_water = self.game_state.water
+            old_ammo = self.game_state.ammo
+            old_money = self.game_state.money
+            
             self.current_resolution = resolution.apply(self.game_state)
             print(f"[Resolution] {self.current_resolution}")
-            # Add outcome to event log
+            
+            # Calculate resource changes
+            resources = {
+                "food": self.game_state.food - old_food,
+                "water": self.game_state.water - old_water,
+                "ammo": self.game_state.ammo - old_ammo,
+                "money": self.game_state.money - old_money,
+            }
+            
+            # Add outcome to event log with resource changes
             if self.current_resolution:
                 outcome_preview = (
                     self.current_resolution.split(".")[0]
                     if "." in self.current_resolution
                     else self.current_resolution[:60]
                 )
-                self.ui.add_to_log(f"{outcome_preview}...", "info")
+                self.ui.add_to_log(f"{outcome_preview}...", "info", resources)
             if self.gemini.last_resolution_source == "fallback":
                 self.fallback_monitor.record_resolution(
                     "fallback", self.gemini.last_failure_reason
@@ -260,8 +275,20 @@ class ConestogaGame:
     def advance_travel(self):
         print(f"\n--- Day {self.game_state.day + 1} ---")
 
+        # Track resources before daily consumption
+        old_food = self.game_state.food
+        old_water = self.game_state.water
+
         miles_today = random.randint(12, 18)
         self.game_state.advance_day(miles_today)
+
+        # Calculate daily resource consumption
+        daily_resources = {
+            "food": self.game_state.food - old_food,
+            "water": self.game_state.water - old_water,
+            "ammo": 0,
+            "money": 0,
+        }
 
         print(
             f"Traveled {miles_today} miles. Total: "
@@ -308,10 +335,10 @@ class ConestogaGame:
 
         terrain = self.game_state.biome.value
         if terrain in terrain_stories:
-            self.ui.add_to_log(random.choice(terrain_stories[terrain]), "info")
+            self.ui.add_to_log(random.choice(terrain_stories[terrain]), "info", daily_resources)
         else:
             self.ui.add_to_log(
-                f"Day {self.game_state.day}: Another {miles_today} miles closer to Oregon.", "info"
+                f"Day {self.game_state.day}: Another {miles_today} miles closer to Oregon.", "info", daily_resources
             )
 
         # Narrative resource warnings
