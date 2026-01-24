@@ -39,6 +39,7 @@ class ItemCatalog:
     """Canonical item registry with stable IDs"""
 
     items: dict[str, str] = field(default_factory=dict)
+    weights: dict[str, int] = field(default_factory=dict)  # Weight in lbs per item
 
     def __post_init__(self):
         if not self.items:
@@ -54,12 +55,28 @@ class ItemCatalog:
                 "itm_spare_clothes": "Spare Clothes",
                 "itm_tools": "Tools",
             }
+        if not self.weights:
+            self.weights = {
+                "itm_shovel": 8,
+                "itm_rifle": 10,
+                "itm_medicine": 2,
+                "itm_wheel": 50,
+                "itm_axle": 60,
+                "itm_rope": 5,
+                "itm_blanket": 4,
+                "itm_cookware": 15,
+                "itm_spare_clothes": 3,
+                "itm_tools": 20,
+            }
 
     def has_item(self, item_id: str) -> bool:
         return item_id in self.items
 
     def get_name(self, item_id: str) -> str:
         return self.items.get(item_id, item_id)
+    
+    def get_weight(self, item_id: str) -> int:
+        return self.weights.get(item_id, 0)
 
     def add_item(self, item_id: str, display_name: str):
         if item_id not in self.items:
@@ -130,17 +147,61 @@ class GameState:
         current = getattr(self, resource, 0)
         new_value = max(0, current + delta)
         setattr(self, resource, new_value)
+    
+    def calculate_wagon_weight(self, item_catalog: 'ItemCatalog') -> int:
+        """Calculate total wagon weight in lbs"""
+        total_weight = 0
+        
+        # Food is already in lbs
+        total_weight += self.food
+        
+        # Water: 8.34 lbs per gallon
+        total_weight += int(self.water * 8.34)
+        
+        # Ammo: ~0.5 lbs per unit (box of bullets)
+        total_weight += int(self.ammo * 0.5)
+        
+        # Items from inventory
+        for item_id, quantity in self.inventory.items():
+            item_weight = item_catalog.get_weight(item_id)
+            total_weight += item_weight * quantity
+        
+        # Base wagon weight (empty wagon)
+        total_weight += 400
+        
+        return total_weight
 
     def advance_day(self, miles: int = 15):
         self.day += 1
         self.miles_traveled += miles
-        self.modify_resource("food", -len(self.party) * 2)
-        self.modify_resource("water", -len(self.party) * 1)
+        
+        # Daily food/water consumption
+        alive_party = [m for m in self.party if m.health > 0]
+        self.modify_resource("food", -len(alive_party) * 2)
+        self.modify_resource("water", -len(alive_party) * 1)
+        
+        # Starvation/dehydration affects health
+        if self.food <= 0:
+            # All living members lose health from starvation
+            for member in alive_party:
+                member.health = max(0, member.health - 10)
+        
+        if self.water <= 0:
+            # All living members lose health from dehydration (faster than starvation)
+            for member in alive_party:
+                member.health = max(0, member.health - 15)
 
+        # Check win condition
         if self.miles_traveled >= self.target_miles:
             self.is_game_over = True
             self.victory = True
-        elif self.food <= 0 or all(m.health <= 0 for m in self.party):
+        # Check failure conditions
+        elif all(m.health <= 0 for m in self.party):
+            # All party members dead
+            self.is_game_over = True
+            self.victory = False
+        elif self.wagon_health <= 0:
+            # Wagon destroyed
             self.is_game_over = True
             self.victory = False
 

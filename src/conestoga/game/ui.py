@@ -360,12 +360,14 @@ class GameUI:
                 3,
             )
 
-    def add_to_log(self, message: str, category: str = "info", resources: dict = None):
+    def add_to_log(self, message: str, category: str = "info", resources: dict = None, is_day_start: bool = False):
         """Add message to event log with optional resource changes"""
-        self.event_log.append({"text": message, "category": category, "resources": resources or {}})
+        self.event_log.append({"text": message, "category": category, "resources": resources or {}, "is_day_start": is_day_start})
         # Keep only last 50 messages (more room with scrolling)
         if len(self.event_log) > 50:
             self.event_log.pop(0)
+        # Auto-scroll to bottom (most recent entry)
+        self.log_scroll_offset = 0
 
     def draw_oregon_trail_map(self, game_state: GameState, x: int, y: int, width: int, height: int):
         """Draw Oregon Trail map using background image with wagon position overlay"""
@@ -819,16 +821,34 @@ class GameUI:
         max_visible = 25  # Increased from 15
         total_logs = len(self.event_log)
 
-        # Clamp scroll offset
+        # Clamp scroll offset (0 = newest entries visible)
         max_scroll = max(0, total_logs - max_visible)
         self.log_scroll_offset = max(0, min(self.log_scroll_offset, max_scroll))
 
-        # Get visible slice
-        start_idx = max(0, total_logs - max_visible - self.log_scroll_offset)
-        end_idx = total_logs - self.log_scroll_offset
-        visible_logs = self.event_log[start_idx:end_idx]
+        # Calculate visible slice
+        if total_logs <= max_visible:
+            # Show all entries if we have fewer than max_visible
+            visible_logs = self.event_log
+        else:
+            # When offset=0, show the LAST max_visible entries (newest at bottom)
+            # When offset increases, scroll back to show older entries
+            start_idx = max(0, total_logs - max_visible - self.log_scroll_offset)
+            end_idx = total_logs - self.log_scroll_offset
+            visible_logs = self.event_log[start_idx:end_idx]
 
         for entry in visible_logs:
+            # Add visual separator for new day
+            if entry.get("is_day_start", False):
+                # Draw horizontal line separator
+                separator_y = log_y - 5
+                pygame.draw.line(
+                    self.screen, GRAY, 
+                    (log_x + 20, separator_y), 
+                    (log_x + log_width - 20, separator_y), 
+                    1
+                )
+                log_y += 10
+            
             color = OFF_WHITE
             if entry["category"] == "warning":
                 color = ORANGE
@@ -1006,9 +1026,9 @@ class GameUI:
         # Dramatic dark background
         self.screen.fill(DARK_GRAY)
 
-        # Calculate vertical centering
+        # Calculate vertical centering for event content
         total_height = 60 + 200 + 20 + 60 + 20 + (len(event.choices) * 80)
-        start_y = (self.height - total_height) // 2
+        start_y = (self.height - 250 - total_height) // 2  # Account for bottom panel space
         
         # Event title banner (no "*** EVENT ***" text)
         title_y = start_y
@@ -1027,80 +1047,171 @@ class GameUI:
         self.draw_panel(40, choices_header_y, self.width - 80, 60, DARK_BLUE, BRIGHT_YELLOW)
         self.draw_text("Choose Your Action:", self.heading_font, OFF_WHITE, 60, choices_header_y + 15)
 
+        # Choices - use two columns if more than 3 choices
+        num_choices = len(event.choices)
+        use_two_columns = num_choices > 3
+        
         y_offset = choices_header_y + 80
-        for i, choice in enumerate(event.choices):
-            is_available = choice.is_available(game_state)
-            is_selected = i == selected_choice
-
+        
+        if use_two_columns:
+            # Two column layout
+            choices_per_column = (num_choices + 1) // 2  # Round up
+            col_width = (self.width - 80 - 30) // 2  # Subtract margins and gap
             choice_height = 70
+            
+            for i, choice in enumerate(event.choices):
+                is_available = choice.is_available(game_state)
+                is_selected = i == selected_choice
+                
+                # Calculate position
+                col = i // choices_per_column
+                row = i % choices_per_column
+                x_pos = 40 + col * (col_width + 30)
+                y_pos = y_offset + row * (choice_height + 12)
 
-            # Choice button styling
-            if not is_available:
-                bg_color = GRAY
-                border_color = DARK_GRAY
-            elif is_selected:
-                bg_color = ORANGE
-                border_color = BRIGHT_YELLOW
-            else:
-                bg_color = DARK_BROWN
-                border_color = TAN
+                # Choice button styling
+                if not is_available:
+                    bg_color = GRAY
+                    border_color = DARK_GRAY
+                elif is_selected:
+                    bg_color = ORANGE
+                    border_color = BRIGHT_YELLOW
+                else:
+                    bg_color = DARK_BROWN
+                    border_color = TAN
 
-            self.draw_panel(
-                40,
-                y_offset,
-                self.width - 80,
-                choice_height,
-                bg_color,
-                border_color,
-                thick=is_selected,
-            )
+                self.draw_panel(
+                    x_pos,
+                    y_pos,
+                    col_width,
+                    choice_height,
+                    bg_color,
+                    border_color,
+                    thick=is_selected,
+                )
 
-            # Choice number badge
-            badge_size = 40
-            badge_x = 55
-            badge_y = y_offset + 15
-            pygame.draw.circle(
-                self.screen,
-                border_color,
-                (badge_x + badge_size // 2, badge_y + badge_size // 2),
-                badge_size // 2,
-            )
-            pygame.draw.circle(
-                self.screen,
-                bg_color if is_selected else BLACK,
-                (badge_x + badge_size // 2, badge_y + badge_size // 2),
-                badge_size // 2 - 4,
-            )
-            self.draw_text(
-                str(i + 1),
-                self.heading_font,
-                border_color,
-                badge_x + badge_size // 2,
-                badge_y + badge_size // 2 + 2,
-                center=True,
-            )
+                # Choice number badge
+                badge_size = 40
+                badge_x = x_pos + 15
+                badge_y = y_pos + 15
+                pygame.draw.circle(
+                    self.screen,
+                    border_color,
+                    (badge_x + badge_size // 2, badge_y + badge_size // 2),
+                    badge_size // 2,
+                )
+                pygame.draw.circle(
+                    self.screen,
+                    bg_color if is_selected else BLACK,
+                    (badge_x + badge_size // 2, badge_y + badge_size // 2),
+                    badge_size // 2 - 4,
+                )
+                self.draw_text(
+                    str(i + 1),
+                    self.heading_font,
+                    border_color,
+                    badge_x + badge_size // 2,
+                    badge_y + badge_size // 2 + 2,
+                    center=True,
+                )
 
-            # Choice text
-            choice_text = choice.text
-            text_color = OFF_WHITE if is_available else DARK_GRAY
-            self.draw_text(
-                choice_text,
-                self.body_font,
-                text_color,
-                115,
-                y_offset + 15,
-                max_width=self.width - 180,
-            )
+                # Choice text
+                choice_text = choice.text
+                text_color = OFF_WHITE if is_available else DARK_GRAY
+                self.draw_text(
+                    choice_text,
+                    self.body_font,
+                    text_color,
+                    x_pos + 75,
+                    y_pos + 15,
+                    max_width=col_width - 95,
+                )
 
-            # Lock reason
-            if not is_available:
-                lock_reason = choice.get_lock_reason(game_state)
-                if lock_reason:
-                    self.draw_text(
-                        f"🔒 {lock_reason}", self.small_font, BRIGHT_RED, 115, y_offset + 45
-                    )
+                # Lock reason
+                if not is_available:
+                    lock_reason = choice.get_lock_reason(game_state)
+                    if lock_reason:
+                        self.draw_text(
+                            f"🔒 {lock_reason}", self.small_font, BRIGHT_RED, x_pos + 75, y_pos + 45
+                        )
+            
+            # Update y_offset for controls hint
+            y_offset = y_offset + choices_per_column * (choice_height + 12)
+        else:
+            # Single column layout (original)
+            for i, choice in enumerate(event.choices):
+                is_available = choice.is_available(game_state)
+                is_selected = i == selected_choice
 
-            y_offset += choice_height + 12
+                choice_height = 70
+
+                # Choice button styling
+                if not is_available:
+                    bg_color = GRAY
+                    border_color = DARK_GRAY
+                elif is_selected:
+                    bg_color = ORANGE
+                    border_color = BRIGHT_YELLOW
+                else:
+                    bg_color = DARK_BROWN
+                    border_color = TAN
+
+                self.draw_panel(
+                    40,
+                    y_offset,
+                    self.width - 80,
+                    choice_height,
+                    bg_color,
+                    border_color,
+                    thick=is_selected,
+                )
+
+                # Choice number badge
+                badge_size = 40
+                badge_x = 55
+                badge_y = y_offset + 15
+                pygame.draw.circle(
+                    self.screen,
+                    border_color,
+                    (badge_x + badge_size // 2, badge_y + badge_size // 2),
+                    badge_size // 2,
+                )
+                pygame.draw.circle(
+                    self.screen,
+                    bg_color if is_selected else BLACK,
+                    (badge_x + badge_size // 2, badge_y + badge_size // 2),
+                    badge_size // 2 - 4,
+                )
+                self.draw_text(
+                    str(i + 1),
+                    self.heading_font,
+                    border_color,
+                    badge_x + badge_size // 2,
+                    badge_y + badge_size // 2 + 2,
+                    center=True,
+                )
+
+                # Choice text
+                choice_text = choice.text
+                text_color = OFF_WHITE if is_available else DARK_GRAY
+                self.draw_text(
+                    choice_text,
+                    self.body_font,
+                    text_color,
+                    115,
+                    y_offset + 15,
+                    max_width=self.width - 180,
+                )
+
+                # Lock reason
+                if not is_available:
+                    lock_reason = choice.get_lock_reason(game_state)
+                    if lock_reason:
+                        self.draw_text(
+                            f"🔒 {lock_reason}", self.small_font, BRIGHT_RED, 115, y_offset + 45
+                        )
+
+                y_offset += choice_height + 12
 
         # Controls hint
         y_offset += 10
@@ -1112,6 +1223,95 @@ class GameUI:
             y_offset,
             center=True,
         )
+
+        # === BOTTOM PANELS (Party, Resources, Controls) ===
+        bottom_y = self.height - 200
+        bottom_height = 190
+
+        # Left: Resources
+        res_width = 480
+        self.draw_panel(15, bottom_y, res_width, bottom_height, DARK_GRAY, GOLD, thick=True)
+        self.draw_text("Resources", self.body_font, BRIGHT_YELLOW, 35, bottom_y + 10)
+
+        # Resources with consistent spacing
+        y = bottom_y + 50
+        col1_icon_x = 35
+        col1_text_x = 68
+        col2_icon_x = 260
+        col2_text_x = 293
+
+        # Row 1: Food and Water
+        self.draw_pixel_icon("food", col1_icon_x, y, 24)
+        self.draw_text(
+            f"Food: {game_state.food} lbs", self.small_font, OFF_WHITE, col1_text_x, y + 2
+        )
+        self.draw_pixel_icon("water", col2_icon_x, y, 24)
+        self.draw_text(
+            f"Water: {game_state.water} gal", self.small_font, OFF_WHITE, col2_text_x, y + 2
+        )
+
+        # Row 2: Ammo and Money
+        y += 40
+        self.draw_pixel_icon("ammo", col1_icon_x, y, 24)
+        self.draw_text(f"Ammo: {game_state.ammo}", self.small_font, OFF_WHITE, col1_text_x, y + 2)
+        pygame.draw.circle(self.screen, GOLD, (col2_icon_x + 12, y + 12), 10)
+        pygame.draw.circle(self.screen, DARK_BROWN, (col2_icon_x + 12, y + 12), 8)
+        self.draw_text("$", self.tiny_font, GOLD, col2_icon_x + 12, y + 12, center=True)
+        self.draw_text(f"{game_state.money}", self.small_font, GOLD, col2_text_x, y + 2)
+
+        # Row 3: Wagon
+        y += 40
+        wagon_color = (
+            GREEN
+            if game_state.wagon_health > 50
+            else (ORANGE if game_state.wagon_health > 25 else RED)
+        )
+        self.draw_pixel_icon("wagon", col1_icon_x, y - 4, 28)
+        self.draw_text(
+            f"Wagon: {game_state.wagon_health}%", self.small_font, wagon_color, col1_text_x, y + 2
+        )
+
+        # Middle: Party
+        party_x = res_width + 25
+        party_width = 650
+        self.draw_panel(party_x, bottom_y, party_width, bottom_height, DARK_GRAY, GOLD, thick=True)
+        self.draw_text("Party Status", self.body_font, BRIGHT_YELLOW, party_x + 20, bottom_y + 10)
+
+        y = bottom_y + 50
+        for member in game_state.party:
+            health_color = GREEN if member.health > 50 else (ORANGE if member.health > 20 else RED)
+
+            # Name and health
+            self.draw_pixel_icon("heart", party_x + 20, y, 20)
+            self.draw_text(f"{member.name}", self.small_font, OFF_WHITE, party_x + 50, y + 2)
+
+            # Health bar
+            bar_x = party_x + 180
+            bar_w = 180
+            bar_h = 16
+            pygame.draw.rect(self.screen, BLACK, (bar_x, y + 3, bar_w, bar_h), 2)
+            filled = int(bar_w * member.health / 100)
+            if filled > 0:
+                pygame.draw.rect(
+                    self.screen, health_color, (bar_x + 2, y + 5, filled - 4, bar_h - 4)
+                )
+
+            # Health %
+            self.draw_text(
+                f"{member.health}%", self.tiny_font, health_color, bar_x + bar_w + 8, y + 4
+            )
+
+            # Status
+            if member.status_conditions:
+                status = ", ".join(member.status_conditions[:2])
+                self.draw_text(f"[{status}]", self.tiny_font, RED, party_x + 450, y + 4)
+
+            y += 35
+
+        # Right: Controls (empty placeholder)
+        ctrl_x = party_x + party_width + 10
+        ctrl_width = self.width - ctrl_x - 15
+        self.draw_panel(ctrl_x, bottom_y, ctrl_width, bottom_height, BLACK, GOLD, thick=True)
 
     def render_loading_screen(self, elapsed_time: float):
         """Req 10.2: Lightweight loading state during async event generation"""

@@ -47,6 +47,11 @@ def validate_effects(effects: Iterable[Effect], item_catalog: ItemCatalog) -> li
                 errors.append(f"Invalid resource target: {eff.target}")
             if eff.value is None or not isinstance(eff.value, (int, float)):
                 errors.append(f"Resource delta must be numeric for {eff.target}")
+        elif op in {EffectType.MODIFY_PARTY_HEALTH, EffectType.MODIFY_RANDOM_HEALTH}:
+            # Health effects can target by name or index, or use random selection
+            if op == EffectType.MODIFY_RANDOM_HEALTH and eff.value is not None:
+                if not isinstance(eff.value, list) or len(eff.value) != 2:
+                    errors.append("MODIFY_RANDOM_HEALTH value must be [health_change, num_affected]")
         elif op in {EffectType.DAMAGE_WAGON, EffectType.REPAIR_WAGON}:
             if eff.value is not None and eff.value < 0:
                 errors.append("Wagon health delta must be non-negative")

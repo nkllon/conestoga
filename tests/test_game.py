@@ -174,7 +174,7 @@ def test_choice_count_and_uniqueness_validation():
         choices=[Choice(id="c1", text="One")],
     )
     errors = too_few.validate(catalog)
-    assert any("between 2 and 3" in e for e in errors)
+    assert any("between 2 and 7" in e for e in errors)
 
     dup_ids = EventDraft(
         event_id="dup",
