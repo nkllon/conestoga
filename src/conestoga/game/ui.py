@@ -335,6 +335,30 @@ class GameUI:
             )
             points = [(x, y + size // 3), (x + size // 2, y), (x + size, y + size // 3)]
             pygame.draw.polygon(self.screen, BROWN, points)
+        elif icon_type == "cloud":
+            # Cloud (online/connected)
+            # Cloud shape in green
+            pygame.draw.circle(self.screen, GREEN, (x + size // 4, y + size // 2), size // 4)
+            pygame.draw.circle(self.screen, GREEN, (x + size // 2, y + size // 3), size // 3)
+            pygame.draw.circle(self.screen, GREEN, (x + 3 * size // 4, y + size // 2), size // 4)
+            pygame.draw.rect(
+                self.screen, GREEN, (x + size // 4, y + size // 2, size // 2, size // 4)
+            )
+            # Checkmark
+            pygame.draw.line(
+                self.screen,
+                OFF_WHITE,
+                (x + size // 3, y + size // 2),
+                (x + 2 * size // 5, y + 2 * size // 3),
+                2,
+            )
+            pygame.draw.line(
+                self.screen,
+                OFF_WHITE,
+                (x + 2 * size // 5, y + 2 * size // 3),
+                (x + 3 * size // 4, y + size // 3),
+                2,
+            )
         elif icon_type == "cloud_off":
             # Cloud with X (disconnected)
             # Cloud shape
@@ -810,9 +834,12 @@ class GameUI:
         self.draw_text("Event Log", self.heading_font, BRIGHT_YELLOW, log_x + 20, 30)
 
         # Draw Gemini status indicator in event log header
-        if not self.gemini_online:
-            status_x = log_x + log_width - 90
-            status_y = 25
+        status_x = log_x + log_width - 90
+        status_y = 25
+        if self.gemini_online:
+            self.draw_pixel_icon("cloud", status_x, status_y, 24)
+            self.draw_text("AI ON", self.tiny_font, GREEN, status_x + 30, status_y + 5)
+        else:
             self.draw_pixel_icon("cloud_off", status_x, status_y, 24)
             self.draw_text("AI OFF", self.tiny_font, RED, status_x + 30, status_y + 5)
 
@@ -857,10 +884,10 @@ class GameUI:
             elif entry["category"] == "success":
                 color = GREEN
 
-            # Draw full text without word wrapping
+            # Draw text with word wrapping
             text = entry["text"]
-            self.draw_text(text, self.tiny_font, color, log_x + 20, log_y)
-            log_y += 22
+            lines_height = self.draw_text(text, self.tiny_font, color, log_x + 20, log_y, max_width=log_width - 40)
+            log_y += lines_height + 4
             
             # Draw resource changes if present
             resources = entry.get("resources", {})
