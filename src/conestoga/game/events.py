@@ -102,6 +102,8 @@ class Effect:
                 game_state.flags[self.target] = True
             elif self.operation == EffectType.CLEAR_FLAG:
                 game_state.flags.pop(self.target, None)
+            elif self.operation == EffectType.ADVANCE_TIME:
+                game_state.day += (self.value or 1)
             elif self.operation == EffectType.DAMAGE_WAGON:
                 game_state.wagon_health = max(0, game_state.wagon_health - (self.value or 10))
             elif self.operation == EffectType.REPAIR_WAGON:
@@ -203,9 +205,16 @@ class EventResolution:
             dc = self.outcome.success_required.get("dc", 10)
 
             rng = random.Random(rng_seed) if rng_seed else random
-            party_skill = max(getattr(m, f"skill_{skill}", 0) for m in game_state.party)
-            roll = rng.randint(1, 20)
-            success = (roll + party_skill) >= dc
+            
+            if self.outcome.success_required.get("random"):
+                # Pure d20 check against DC
+                roll = rng.randint(1, 20)
+                success = roll >= dc
+            else:
+                # Skill check
+                party_skill = max(getattr(m, f"skill_{skill}", 0) for m in game_state.party)
+                roll = rng.randint(1, 20)
+                success = (roll + party_skill) >= dc
 
             result_text = self.outcome.success_text if success else self.outcome.failure_text
         else:
