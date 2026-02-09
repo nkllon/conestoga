@@ -7,11 +7,13 @@ An Oregon Trail-inspired journey simulation with **Gemini 3 API** dynamic events
 A pygame-based prototype demonstrating structured Gemini 3 integration with validation pipelines and fallback behavior.
 
 **Requirements:**
+
 - Gemini 3 API (`gemini-3-flash-preview` or `gemini-3-pro-preview`)
 - Python 3.12+
 - GEMINI_API_KEY environment variable (optional - fallback mode available)
 
 **Quick Start:**
+
 ```bash
 uv sync
 export GEMINI_API_KEY='your-key-here'  # Optional
@@ -19,6 +21,13 @@ conestoga
 ```
 
 See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed instructions and controls.
+
+## Documentation
+
+- [Executive Summary](docs/executive_summary.md): Project vision, business value, and roadmap.
+- [Architecture](docs/architecture.md): System design, diagrams (Context, Sequence, State), and component overview.
+- [Developer Guide](docs/developer.md): Setup, project structure, testing, and contribution workflows.
+- [DevOps Guide](docs/devops.md): Deployment to Cloud Run, CI/CD, and secrets management.
 
 ## Features
 
@@ -89,6 +98,7 @@ cp .env.example .env
 ## Python Dependencies
 
 ### Core Dependencies
+
 - **python-dotenv**: Environment variable management
 - **rdflib**: RDF library for working with semantic web data
 - **owlrl**: OWL-RL and RDFS reasoning
@@ -97,6 +107,7 @@ cp .env.example .env
 ## Node.js Dependencies
 
 ### Development Tools
+
 - **@gotalabs/cc-sdd**: Schema-driven development tools (install from GitHub)
 
 ## GCP Setup
@@ -104,22 +115,26 @@ cp .env.example .env
 To use Google Cloud Platform features:
 
 1. Install the GCP CLI:
+
    ```bash
    # Follow instructions at https://cloud.google.com/sdk/docs/install
    ```
 
 2. Authenticate:
+
    ```bash
    gcloud auth application-default login
    ```
 
 3. Set your project:
+
    ```bash
    gcloud config set project YOUR_PROJECT_ID
    ```
 
 4. Configure environment variables in `.env`:
-   ```
+
+   ```bash
    GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
    GCP_PROJECT_ID=your-project-id
    GCS_BUCKET_NAME=your-bucket-name
@@ -130,12 +145,14 @@ To use Google Cloud Platform features:
 For secrets management with 1Password:
 
 1. Install 1Password CLI:
+
    ```bash
    # Follow instructions at https://developer.1password.com/docs/cli/get-started
    ```
 
 2. Configure environment variables in `.env`:
-   ```
+
+   ```bash
    OP_SERVICE_ACCOUNT_TOKEN=your-token
    # OR
    OP_CONNECT_HOST=your-host
@@ -196,11 +213,12 @@ make test
 ```
 
 #### UI headless mode
+
 - CI defaults to headless Pygame (`UI_HEADLESS=1` or `CI=1`). To force a visible window locally, run with `UI_HEADLESS=0`.
 
 ## Project Structure
 
-```
+```text
 conestoga/
 ├── .env.example        # Environment variable template
 ├── .gitignore          # Git ignore rules

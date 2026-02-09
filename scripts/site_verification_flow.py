@@ -12,7 +12,23 @@ from configure_cloudflare import configure_dns
 DOMAIN = "conestoga.nkllon.com"
 CLOUDFLARE_TOKEN = os.environ.get("CLOUDFLARE_TOKEN")
 if not CLOUDFLARE_TOKEN:
-    raise ValueError("CLOUDFLARE_TOKEN environment variable not set")
+    # Fallback to 1Password
+    try:
+        import subprocess
+        print("🔐 Attempting to fetch CLOUDFLARE_TOKEN from 1Password...")
+        result = subprocess.run(
+            ["op", "read", "op://energration/v5ga632uvvehpygjltskllkiyy/credential"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        CLOUDFLARE_TOKEN = result.stdout.strip()
+        print("✓ Retrieved token from 1Password")
+    except Exception as e:
+        pass
+
+if not CLOUDFLARE_TOKEN:
+    raise ValueError("CLOUDFLARE_TOKEN environment variable not set and could not be retrieved from 1Password")
 CLOUD_RUN_SERVICE = "conestoga"
 PROJECT_ID = "gen-lang-client-0128452200"
 REGION = "us-central1"
