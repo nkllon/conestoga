@@ -38,3 +38,28 @@ format:
 
 run:
 	uv run python -m conestoga.main
+
+# Build documentation and diagrams
+build: mermaid-svg index docs stage
+
+# DOCX Generation
+docs:
+	python3 scripts/convert_docs_to_docx_with_versioning.py
+
+# Stage Artifacts
+stage:
+	uv build
+	python3 scripts/stage_build_artifacts.py
+
+# Repository search index
+index:
+	python3 scripts/build_repo_index.py
+
+# Mermaid diagram generation
+mermaid-svg:
+	python3 scripts/convert_mermaid_to_svg.py
+
+# Repository validation
+validate:
+	./scripts/validate_repo.sh
+

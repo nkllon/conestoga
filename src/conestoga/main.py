@@ -6,9 +6,10 @@ This is the main entry point for the Conestoga application.
 
 import os
 
-from conestoga.config import load_configuration
 from rdflib import Graph, Literal, Namespace
 from rdflib.namespace import RDF, RDFS
+
+from conestoga.config import load_configuration
 
 
 def main():
@@ -28,8 +29,9 @@ def main():
     print("\n✅ Application initialized successfully!")
     print("\n🎮 Starting Conestoga Game...")
     print("=" * 50)
-    
+
     from conestoga.game.runner import main as game_main
+
     game_main()
 
 

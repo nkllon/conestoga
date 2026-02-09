@@ -313,7 +313,9 @@ def test_runner_logs_starvation_narrative_for_starvation_death():
         assert game.mode == runner_mod.GameMode.GAME_OVER
         assert game.game_state.game_over_cause == "starvation"
         assert any("Starvation claims your family" in msg for msg in messages)
-        assert not any("final member of your party breathes their last" in msg.lower() for msg in messages)
+        assert not any(
+            "final member of your party breathes their last" in msg.lower() for msg in messages
+        )
     finally:
         runner_mod.GameUI = original_ui  # type: ignore[assignment]
         runner_mod.ConestogaGame.start_prefetch = original_start_prefetch  # type: ignore[assignment]

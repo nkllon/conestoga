@@ -93,9 +93,7 @@ class Effect:
                     alive_party = [m for m in game_state.party if m.health > 0]
                     # Sample only from alive members
                     if alive_party:
-                        affected = random.sample(
-                            alive_party, min(num_affected, len(alive_party))
-                        )
+                        affected = random.sample(alive_party, min(num_affected, len(alive_party)))
                         for member in affected:
                             member.health = max(0, min(100, member.health + health_change))
             elif self.operation == EffectType.SET_FLAG:
@@ -103,7 +101,7 @@ class Effect:
             elif self.operation == EffectType.CLEAR_FLAG:
                 game_state.flags.pop(self.target, None)
             elif self.operation == EffectType.ADVANCE_TIME:
-                game_state.day += (self.value or 1)
+                game_state.day += self.value or 1
             elif self.operation == EffectType.DAMAGE_WAGON:
                 game_state.wagon_health = max(0, game_state.wagon_health - (self.value or 10))
             elif self.operation == EffectType.REPAIR_WAGON:
@@ -205,7 +203,7 @@ class EventResolution:
             dc = self.outcome.success_required.get("dc", 10)
 
             rng = random.Random(rng_seed) if rng_seed else random
-            
+
             if self.outcome.success_required.get("random"):
                 # Pure d20 check against DC
                 roll = rng.randint(1, 20)
