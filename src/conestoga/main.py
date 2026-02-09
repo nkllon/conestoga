@@ -6,7 +6,7 @@ This is the main entry point for the Conestoga application.
 
 import os
 
-from dotenv import load_dotenv
+from conestoga.config import load_configuration
 from rdflib import Graph, Literal, Namespace
 from rdflib.namespace import RDF, RDFS
 
@@ -14,7 +14,7 @@ from rdflib.namespace import RDF, RDFS
 def main():
     """Main application entry point."""
     # Load environment variables
-    load_dotenv()
+    load_configuration()
 
     print("🚀 Conestoga - Ontology Management & Cloud Tools")
     print("=" * 50)
@@ -26,6 +26,11 @@ def main():
     demonstrate_rdf()
 
     print("\n✅ Application initialized successfully!")
+    print("\n🎮 Starting Conestoga Game...")
+    print("=" * 50)
+    
+    from conestoga.game.runner import main as game_main
+    game_main()
 
 
 def check_environment():

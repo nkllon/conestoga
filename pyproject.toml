@@ -31,6 +31,7 @@ dev = [
     "pyshacl>=0.23.0",
     "langchain>=0.2.10",
     "langchain-core>=0.2.10",
+    "pyinstaller>=6.4.0",
 ]
 
 [build-system]

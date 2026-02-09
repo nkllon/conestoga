@@ -9,7 +9,7 @@ Preview APIs (gemini-3-flash-preview, gemini-3-pro-preview) are acceptable.
 import json
 import os
 
-from dotenv import load_dotenv
+from conestoga.config import load_configuration
 
 from .events import (
     Choice,
@@ -24,7 +24,7 @@ from .state import GameState, ItemCatalog
 from .validators import validate_effect_targets
 
 # Load environment variables
-load_dotenv()
+load_configuration()
 
 try:
     from google import genai
