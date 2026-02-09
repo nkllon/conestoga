@@ -71,7 +71,7 @@ def configure_dns(token, domain, record_name, target, record_type="CNAME"):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print("Usage: python configure_cloudflare.py <token> <domain> <record> <target> [type]")
         sys.exit(1)
         
