@@ -6,9 +6,13 @@ import google.auth.transport.requests
 import requests
 from configure_cloudflare import configure_dns
 
+import os
+
 # Config
 DOMAIN = "conestoga.nkllon.com"
-CLOUDFLARE_TOKEN = "RlDvjMsLIbk4ox621w-TDYxYv5Olu-K-r-Mt2AGy"
+CLOUDFLARE_TOKEN = os.environ.get("CLOUDFLARE_TOKEN")
+if not CLOUDFLARE_TOKEN:
+    raise ValueError("CLOUDFLARE_TOKEN environment variable not set")
 CLOUD_RUN_SERVICE = "conestoga"
 PROJECT_ID = "gen-lang-client-0128452200"
 REGION = "us-central1"
