@@ -199,11 +199,18 @@ class EventResolution:
     def apply(self, game_state, rng_seed: int | None = None) -> str:
         success = True  # Default to success if no check required
         if self.outcome.success_required:
-            skill = self.outcome.success_required.get("skill")
-            dc = self.outcome.success_required.get("dc", 10)
+            success_required = self.outcome.success_required
+            skill = success_required.get("skill")
+            dc = success_required.get("dc", 10)
 
             rng = random.Random(rng_seed) if rng_seed else random
-            party_skill = max(getattr(m, f"skill_{skill}", 0) for m in game_state.party)
+            if skill:
+                party_skill = max(
+                    getattr(m, f"skill_{skill}", 0) for m in game_state.party
+                )
+            else:
+                # Skill-less check: pure d20 roll against DC.
+                party_skill = 0
             roll = rng.randint(1, 20)
             success = (roll + party_skill) >= dc
 
