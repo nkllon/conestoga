@@ -1,6 +1,11 @@
-# Implementation Plan
+### Implementation Phase
 
-- [ ] 1. Establish CI orchestration and branch protections
+- [x] Copy and adapt helper scripts from Eudorus
+- [x] Implement build system changes (Makefile)
+- [x] Implement CI workflow changes (ci.yml)
+- [x] Verify changes (Local validation passed, PR #32 created)
+
+- [x] 1. Establish CI orchestration and branch protections
   - Define workflow triggers for pushes to default/release branches, tags, and pull request updates to start required jobs.
   - Configure branch protection required checks and status reporting so merges wait for pipeline results.
   - Set shared environment defaults for Python 3.12 and headless-friendly settings across jobs.
