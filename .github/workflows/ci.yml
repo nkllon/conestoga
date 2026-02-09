@@ -114,9 +114,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Gitleaks
-        run: |
-          curl -ssfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b .
-          ./gitleaks detect --source . --verbose --redact
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Setup Python
