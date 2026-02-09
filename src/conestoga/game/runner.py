@@ -476,7 +476,15 @@ class ConestogaGame:
             )
         elif key == pygame.K_RETURN:
             self.resolve_choice(self.selected_choice_index)
-        elif key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5]:
+        elif key in [
+            pygame.K_1,
+            pygame.K_2,
+            pygame.K_3,
+            pygame.K_4,
+            pygame.K_5,
+            pygame.K_6,
+            pygame.K_7,
+        ]:
             choice_num = key - pygame.K_1
             if choice_num < len(self.current_event.choices):
                 self.selected_choice_index = choice_num
