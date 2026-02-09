@@ -71,9 +71,14 @@ def configure_dns(token, domain, record_name, target, record_type="CNAME"):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
-        print("Usage: python configure_cloudflare.py <token> <domain> <record> <target> [type]")
+    token = os.environ.get("CLOUDFLARE_TOKEN")
+    if not token:
+        print("Error: CLOUDFLARE_TOKEN environment variable not set")
+        sys.exit(1)
+
+    if len(sys.argv) < 4:
+        print("Usage: python configure_cloudflare.py <domain> <record> <target> [type]")
         sys.exit(1)
         
-    r_type = sys.argv[5] if len(sys.argv) > 5 else "CNAME"
-    configure_dns(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], r_type)
+    r_type = sys.argv[4] if len(sys.argv) > 4 else "CNAME"
+    configure_dns(token, sys.argv[1], sys.argv[2], sys.argv[3], r_type)

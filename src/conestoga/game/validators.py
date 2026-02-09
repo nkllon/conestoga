@@ -17,8 +17,8 @@ def validate_choices(event: EventDraft) -> list[str]:
     """Validate event choices for count, uniqueness, and text."""
     errors: list[str] = []
     choices = event.choices
-    if len(choices) < 2 or len(choices) > 3:
-        errors.append("Choices must be between 2 and 3 options")
+    if len(choices) < 2 or len(choices) > 7:
+        errors.append("Choices must be between 2 and 7 options")
 
     seen_ids: set[str] = set()
     for c in choices:
