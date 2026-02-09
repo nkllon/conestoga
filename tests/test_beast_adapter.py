@@ -1,10 +1,13 @@
 """Tests for Beast adapter message handling and integration"""
-import pytest
-import json
+
 import asyncio
-from unittest.mock import Mock, MagicMock, patch
+import json
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 from conestoga.beast.adapter import BeastAdapter
-from conestoga.beast.envelope import create_envelope, EnvelopeValidationError
+from conestoga.beast.envelope import create_envelope
 
 
 class TestBeastAdapterInit:
@@ -23,9 +26,7 @@ class TestBeastAdapterInit:
 
     def test_init_with_custom_redis(self):
         """Test initialization with custom Redis config"""
-        adapter = BeastAdapter(
-            agent_id="test-agent", redis_host="custom-host", redis_port=6380
-        )
+        adapter = BeastAdapter(agent_id="test-agent", redis_host="custom-host", redis_port=6380)
 
         assert adapter.redis_host == "custom-host"
         assert adapter.redis_port == 6380
@@ -33,9 +34,7 @@ class TestBeastAdapterInit:
     def test_init_with_observability(self):
         """Test initialization with observability stack"""
         mock_observability = Mock()
-        adapter = BeastAdapter(
-            agent_id="test-agent", observability_stack=mock_observability
-        )
+        adapter = BeastAdapter(agent_id="test-agent", observability_stack=mock_observability)
 
         assert adapter.observability == mock_observability
 
@@ -103,9 +102,7 @@ class TestBeastAdapterHandlers:
         mock_observability.processing_duration.time.return_value.__enter__ = Mock()
         mock_observability.processing_duration.time.return_value.__exit__ = Mock()
 
-        adapter = BeastAdapter(
-            agent_id="test-agent", observability_stack=mock_observability
-        )
+        adapter = BeastAdapter(agent_id="test-agent", observability_stack=mock_observability)
         handler = Mock()
         adapter.register_handler("test_message", handler)
 
@@ -171,19 +168,13 @@ class TestBeastAdapterMessageHandling:
         mock_observability = Mock()
         mock_observability.messages_total.labels.return_value.inc = Mock()
         mock_observability.extract_trace_context.return_value = None
-        mock_observability.get_tracer.return_value.start_as_current_span = (
-            MagicMock()
-        )
+        mock_observability.get_tracer.return_value.start_as_current_span = MagicMock()
 
-        adapter = BeastAdapter(
-            agent_id="test-agent", observability_stack=mock_observability
-        )
+        adapter = BeastAdapter(agent_id="test-agent", observability_stack=mock_observability)
         handler = Mock()
         adapter.register_handler("test_message", handler)
 
-        envelope = create_envelope(
-            sender="agent-1", message_type="test_message", payload_data={}
-        )
+        envelope = create_envelope(sender="agent-1", message_type="test_message", payload_data={})
         raw_message = json.dumps(envelope.to_dict())
 
         adapter._handle_message(raw_message)
@@ -202,9 +193,7 @@ class TestBeastAdapterMessageHandling:
         handler = Mock()
         adapter.register_handler("test_message", handler)
 
-        envelope = create_envelope(
-            sender="agent-1", message_type="test_message", payload_data={}
-        )
+        envelope = create_envelope(sender="agent-1", message_type="test_message", payload_data={})
         raw_message = json.dumps(envelope.to_dict())
 
         adapter._handle_message(raw_message)
@@ -226,9 +215,7 @@ class TestBeastAdapterMessageHandling:
             observability_stack=mock_observability,
         )
 
-        envelope = create_envelope(
-            sender="agent-1", message_type="test_message", payload_data={}
-        )
+        envelope = create_envelope(sender="agent-1", message_type="test_message", payload_data={})
         raw_message = json.dumps(envelope.to_dict())
 
         adapter._handle_message(raw_message)
@@ -265,7 +252,8 @@ class TestBeastAdapterSendMessage:
         assert mock_redis.publish.call_count >= 1
         # Find the message publish call (not heartbeat)
         message_calls = [
-            call for call in mock_redis.publish.call_args_list
+            call
+            for call in mock_redis.publish.call_args_list
             if call[0][0] == "beast:global:messages"
         ]
         assert len(message_calls) == 1
@@ -287,9 +275,7 @@ class TestBeastAdapterSendMessage:
         }
         mock_observability.messages_total.labels.return_value.inc = Mock()
 
-        adapter = BeastAdapter(
-            agent_id="test-agent", observability_stack=mock_observability
-        )
+        adapter = BeastAdapter(agent_id="test-agent", observability_stack=mock_observability)
         adapter.connect()
 
         message = {"header": {}, "payload": {"type": "test_message"}}
@@ -319,7 +305,8 @@ class TestBeastAdapterSendMessage:
 
         # Only heartbeat should be published, not the message
         message_calls = [
-            call for call in mock_redis.publish.call_args_list
+            call
+            for call in mock_redis.publish.call_args_list
             if call[0][0] != "beast:global:heartbeat"
         ]
         assert len(message_calls) == 0
@@ -397,7 +384,8 @@ class TestBeastAdapterAsync:
         assert correlation_id is not None
         # Find the message publish call (not heartbeat)
         message_calls = [
-            call for call in mock_redis.publish.call_args_list
+            call
+            for call in mock_redis.publish.call_args_list
             if call[0][0] != "beast:global:heartbeat"
         ]
         assert len(message_calls) == 1

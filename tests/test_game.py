@@ -8,8 +8,8 @@ from conestoga.game.events import (
     FallbackDeck,
     Prerequisite,
 )
-from conestoga.game.gemini_gateway import GeminiGateway
 from conestoga.game.fallback_monitor import FallbackMonitor
+from conestoga.game.gemini_gateway import GeminiGateway
 from conestoga.game.state import GameState, ItemCatalog
 from conestoga.game.validators import validate_effect_targets
 
@@ -201,7 +201,7 @@ def test_modify_resource_rejects_unknown():
     state = GameState()
     try:
         state.modify_resource("gold", 10)
-        assert False, "Expected ValueError for unknown resource"
+        raise AssertionError("Expected ValueError for unknown resource")
     except ValueError:
         assert True
 
@@ -263,7 +263,9 @@ def test_runner_log_fallback_uses_ui_stub():
     try:
         game = runner_mod.ConestogaGame()
         game._log_fallback("event", "timeout")  # type: ignore[attr-defined]
-        assert any("Fallback event used" in msg for msg, cat in game.ui.event_log if cat == "warning")
+        assert any(
+            "Fallback event used" in msg for msg, cat in game.ui.event_log if cat == "warning"
+        )
     finally:
         runner_mod.GameUI = original_ui  # type: ignore[assignment]
         runner_mod.ConestogaGame.start_prefetch = original_start_prefetch  # type: ignore[assignment]

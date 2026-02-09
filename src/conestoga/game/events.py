@@ -83,12 +83,16 @@ class Effect:
                     if member:
                         member.health = max(0, min(100, member.health + (self.value or 0)))
                 elif isinstance(self.target, int) and 0 <= self.target < len(game_state.party):
-                    game_state.party[self.target].health = max(0, min(100, game_state.party[self.target].health + (self.value or 0)))
+                    game_state.party[self.target].health = max(
+                        0, min(100, game_state.party[self.target].health + (self.value or 0))
+                    )
             elif self.operation == EffectType.MODIFY_RANDOM_HEALTH:
                 # Affect random party members (value = [health_change, num_affected])
                 if isinstance(self.value, list) and len(self.value) == 2:
                     health_change, num_affected = self.value
-                    affected = random.sample(game_state.party, min(num_affected, len(game_state.party)))
+                    affected = random.sample(
+                        game_state.party, min(num_affected, len(game_state.party))
+                    )
                     for member in affected:
                         member.health = max(0, min(100, member.health + health_change))
             elif self.operation == EffectType.SET_FLAG:
@@ -208,7 +212,7 @@ class EventResolution:
         for effect in self.outcome.effects:
             if not effect.apply(game_state):
                 print(f"Warning: Effect {effect.operation} failed to apply")
-        
+
         # Apply conditional effects based on success/failure
         if success and self.outcome.success_effects:
             for effect in self.outcome.success_effects:
@@ -248,7 +252,10 @@ class FallbackDeck:
             EventDraft(
                 event_id="fallback_hunting",
                 title="Wildlife Spotted",
-                narrative="Deer tracks cross your path. A hunting party could gather fresh meat, but the wilderness is unpredictable.",
+                narrative=(
+                    "Deer tracks cross your path. A hunting party could gather fresh meat, but "
+                    "the wilderness is unpredictable."
+                ),
                 choices=[
                     Choice(
                         id="hunt",
@@ -261,7 +268,9 @@ class FallbackDeck:
             EventDraft(
                 event_id="fallback_trader",
                 title="Traveling Trader",
-                narrative="A lone trader offers to sell supplies. His prices are higher than at forts.",
+                narrative=(
+                    "A lone trader offers to sell supplies. His prices are higher than at forts."
+                ),
                 choices=[
                     Choice(
                         id="buy_food",
@@ -284,7 +293,9 @@ class FallbackDeck:
             EventDraft(
                 event_id="fallback_fort",
                 title="Trading Fort",
-                narrative="You arrive at a well-stocked fort. Prices are reasonable and variety is good.",
+                narrative=(
+                    "You arrive at a well-stocked fort. Prices are reasonable and variety is good."
+                ),
                 choices=[
                     Choice(
                         id="buy_supplies",
@@ -346,7 +357,9 @@ class FallbackDeck:
                     Choice(
                         id="use_medicine",
                         text="Use medicine",
-                        prerequisites=[Prerequisite(type="has_item", target="itm_medicine", value=1)],
+                        prerequisites=[
+                            Prerequisite(type="has_item", target="itm_medicine", value=1)
+                        ],
                     ),
                     Choice(id="rest_it_off", text="Rest and hope they recover"),
                     Choice(id="continue_anyway", text="Continue traveling despite illness"),
@@ -363,7 +376,9 @@ class FallbackDeck:
                         text="The crossing goes smoothly, though one person slips and gets soaked.",
                         effects=[
                             Effect(EffectType.MODIFY_RESOURCE, "water", 10),
-                            Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [-5, 1]),  # 1 person loses 5 health
+                            Effect(
+                                EffectType.MODIFY_RANDOM_HEALTH, None, [-5, 1]
+                            ),  # 1 person loses 5 health
                         ],
                     ),
                 ),
@@ -383,12 +398,17 @@ class FallbackDeck:
                         text="",
                         success_required={"random": True, "dc": 12},  # ~45% chance of contamination
                         success_text="You fill barrels with fresh, clear water from the river.",
-                        failure_text="The water looked clean, but one family member falls ill from contamination.",
+                        failure_text=(
+                            "The water looked clean, but one family member falls ill from "
+                            "contamination."
+                        ),
                         effects=[
                             Effect(EffectType.MODIFY_RESOURCE, "water", 35),
                         ],
                         failure_effects=[
-                            Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [-15, 1]),  # 1 person gets sick from bad water
+                            Effect(
+                                EffectType.MODIFY_RANDOM_HEALTH, None, [-15, 1]
+                            ),  # 1 person gets sick from bad water
                         ],
                     ),
                 ),
@@ -400,7 +420,10 @@ class FallbackDeck:
                         text="",
                         success_required={"skill": "hunter", "dc": 14},  # Increased difficulty
                         success_text="Your hunters bring down a buck! Fresh meat for the party.",
-                        failure_text="The hunt goes poorly. A hunter is injured and the rifle is damaged in the scramble.",
+                        failure_text=(
+                            "The hunt goes poorly. A hunter is injured and the rifle is damaged in "
+                            "the scramble."
+                        ),
                         effects=[
                             Effect(EffectType.MODIFY_RESOURCE, "ammo", -3),  # Always use ammo
                         ],
@@ -408,7 +431,9 @@ class FallbackDeck:
                             Effect(EffectType.MODIFY_RESOURCE, "food", 50),  # Good haul on success
                         ],
                         failure_effects=[
-                            Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [-15, 1]),  # 1 hunter gets hurt
+                            Effect(
+                                EffectType.MODIFY_RANDOM_HEALTH, None, [-15, 1]
+                            ),  # 1 hunter gets hurt
                             Effect(EffectType.REMOVE_ITEM, "itm_rifle", 1),  # Rifle broken/lost
                         ],
                     ),
@@ -524,21 +549,24 @@ class FallbackDeck:
                 ),
                 "leave": EventResolution(
                     choice_id="leave",
-                    outcome=Outcome(
-                        text="You depart the fort and continue westward.", effects=[]
-                    ),
+                    outcome=Outcome(text="You depart the fort and continue westward.", effects=[]),
                 ),
             },
             "fallback_rest": {
                 "rest": EventResolution(
                     choice_id="rest",
                     outcome=Outcome(
-                        text="The party rests and recovers. Everyone feels better, though a day is lost.",
+                        text=(
+                            "The party rests and recovers. Everyone feels better, though a day is "
+                            "lost."
+                        ),
                         effects=[
                             Effect(EffectType.ADVANCE_TIME, None, 1),  # Advance 1 day
                             Effect(EffectType.MODIFY_RESOURCE, "food", -8),  # Daily consumption
                             Effect(EffectType.MODIFY_RESOURCE, "water", -4),  # Daily consumption
-                            Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [15, 4]),  # All 4 members gain health
+                            Effect(
+                                EffectType.MODIFY_RANDOM_HEALTH, None, [15, 4]
+                            ),  # All 4 members gain health
                             Effect(EffectType.LOG_JOURNAL, "Took a rest day to recover."),
                         ],
                     ),
@@ -546,9 +574,14 @@ class FallbackDeck:
                 "push_on": EventResolution(
                     choice_id="push_on",
                     outcome=Outcome(
-                        text="You push the weary party onward. The exhaustion worsens their condition.",
+                        text=(
+                            "You push the weary party onward. The exhaustion worsens their "
+                            "condition."
+                        ),
                         effects=[
-                            Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [-8, 3]),  # 3 members lose more health
+                            Effect(
+                                EffectType.MODIFY_RANDOM_HEALTH, None, [-8, 3]
+                            ),  # 3 members lose more health
                         ],
                     ),
                 ),
@@ -565,22 +598,32 @@ class FallbackDeck:
                     choice_id="collect_rain",
                     outcome=Outcome(
                         text="",
-                        success_required={"random": True, "dc": 14},  # ~35% chance of contamination
+                        # ~35% chance of contamination
+                        success_required={"random": True, "dc": 14},
                         success_text="You collect fresh rainwater in barrels during the storm.",
-                        failure_text="The rainwater collected debris and someone gets sick from drinking it.",
+                        failure_text=(
+                            "The rainwater collected debris and someone gets sick from drinking it."
+                        ),
                         effects=[
-                            Effect(EffectType.MODIFY_RESOURCE, "water", 20),  # Less water than river
+                            Effect(
+                                EffectType.MODIFY_RESOURCE, "water", 20
+                            ),  # Less water than river
                             Effect(EffectType.MODIFY_RESOURCE, "food", -4),  # Time spent
                         ],
                         failure_effects=[
-                            Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [-10, 1]),  # 1 person gets sick
+                            Effect(
+                                EffectType.MODIFY_RANDOM_HEALTH, None, [-10, 1]
+                            ),  # 1 person gets sick
                         ],
                     ),
                 ),
                 "continue_travel": EventResolution(
                     choice_id="continue_travel",
                     outcome=Outcome(
-                        text="You travel through the storm. The wagon takes damage and someone catches a chill.",
+                        text=(
+                            "You travel through the storm. The wagon takes damage and someone "
+                            "catches a chill."
+                        ),
                         effects=[
                             Effect(EffectType.DAMAGE_WAGON, None, 15),
                             Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [-10, 1]),
@@ -602,7 +645,9 @@ class FallbackDeck:
                 "rest_it_off": EventResolution(
                     choice_id="rest_it_off",
                     outcome=Outcome(
-                        text="With rest, your companion slowly recovers, though they're still weak.",
+                        text=(
+                            "With rest, your companion slowly recovers, though they're still weak."
+                        ),
                         effects=[
                             Effect(EffectType.MODIFY_RESOURCE, "food", -6),
                             Effect(EffectType.MODIFY_RANDOM_HEALTH, None, [5, 1]),

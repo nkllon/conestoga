@@ -4,6 +4,7 @@ Implements Requirements 1.3, 2.1, 10.2, 22.1-22.4
 """
 
 import os
+
 import pygame
 
 from .events import EventDraft
@@ -85,26 +86,62 @@ class GameUI:
             "blue_mountains": "assets/conestoga loop - travel - blue mountains.mp4",
             "oregon_country": "assets/conestoga loop - travel - oregon.mp4",
         }
-        
+
         # Trail segments with mile markers
         self.trail_segments = [
-            {"name": "Eastern Plains", "video": "eastern_plains", "start_miles": 0, "end_miles": 250},
-            {"name": "Kansas River", "video": "kansas_crossings", "start_miles": 250, "end_miles": 450},
-            {"name": "Western Plains", "video": "western_plains", "start_miles": 450, "end_miles": 900},
-            {"name": "Rocky Mountains", "video": "rocky_mountains", "start_miles": 900, "end_miles": 1300},
-            {"name": "Idaho Valley", "video": "idaho_valley", "start_miles": 1300, "end_miles": 1600},
-            {"name": "Blue Mountains", "video": "blue_mountains", "start_miles": 1600, "end_miles": 1850},
-            {"name": "Oregon Country", "video": "oregon_country", "start_miles": 1850, "end_miles": 2000},
+            {
+                "name": "Eastern Plains",
+                "video": "eastern_plains",
+                "start_miles": 0,
+                "end_miles": 250,
+            },
+            {
+                "name": "Kansas River",
+                "video": "kansas_crossings",
+                "start_miles": 250,
+                "end_miles": 450,
+            },
+            {
+                "name": "Western Plains",
+                "video": "western_plains",
+                "start_miles": 450,
+                "end_miles": 900,
+            },
+            {
+                "name": "Rocky Mountains",
+                "video": "rocky_mountains",
+                "start_miles": 900,
+                "end_miles": 1300,
+            },
+            {
+                "name": "Idaho Valley",
+                "video": "idaho_valley",
+                "start_miles": 1300,
+                "end_miles": 1600,
+            },
+            {
+                "name": "Blue Mountains",
+                "video": "blue_mountains",
+                "start_miles": 1600,
+                "end_miles": 1850,
+            },
+            {
+                "name": "Oregon Country",
+                "video": "oregon_country",
+                "start_miles": 1850,
+                "end_miles": 2000,
+            },
         ]
-        
+
         # Video playback state
         self.current_video = None
         self.video_surface = None
         self.current_segment = "eastern_plains"
         self.video_playing = False  # Pause on first screen
-        
+
         try:
             import cv2
+
             self.cv2 = cv2
             self.has_video = True
             print("[UI] Video support enabled (cv2 available)")
@@ -126,17 +163,17 @@ class GameUI:
                 return segment["video"]
         # Default to last segment if beyond range
         return self.trail_segments[-1]["video"]
-    
+
     def load_video(self, segment_key: str):
         """Load a video for the current segment"""
         if not self.has_video:
             return
-        
+
         video_path = self.trail_videos.get(segment_key)
         if not video_path or not os.path.exists(video_path):
             print(f"[UI] Video not found: {video_path}")
             return
-        
+
         try:
             if self.current_video:
                 self.current_video.release()
@@ -144,12 +181,12 @@ class GameUI:
             print(f"[UI] Loaded video: {segment_key}")
         except Exception as e:
             print(f"[UI] Failed to load video {segment_key}: {e}")
-    
+
     def get_video_frame(self) -> pygame.Surface | None:
         """Get current frame from video, looping if needed"""
         if not self.has_video or not self.current_video:
             return None
-        
+
         # Only advance frame if video is playing
         if self.video_playing:
             ret, frame = self.current_video.read()
@@ -168,12 +205,12 @@ class GameUI:
                 self.current_video.set(self.cv2.CAP_PROP_POS_FRAMES, max(0, current_pos - 1))
             else:
                 return None
-        
+
         # Convert BGR to RGB and create pygame surface
         frame = self.cv2.cvtColor(frame, self.cv2.COLOR_BGR2RGB)
         frame = frame.swapaxes(0, 1)  # Transpose for pygame
         return pygame.surfarray.make_surface(frame)
-    
+
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -384,9 +421,22 @@ class GameUI:
                 3,
             )
 
-    def add_to_log(self, message: str, category: str = "info", resources: dict = None, is_day_start: bool = False):
+    def add_to_log(
+        self,
+        message: str,
+        category: str = "info",
+        resources: dict = None,
+        is_day_start: bool = False,
+    ):
         """Add message to event log with optional resource changes"""
-        self.event_log.append({"text": message, "category": category, "resources": resources or {}, "is_day_start": is_day_start})
+        self.event_log.append(
+            {
+                "text": message,
+                "category": category,
+                "resources": resources or {},
+                "is_day_start": is_day_start,
+            }
+        )
         # Keep only last 50 messages (more room with scrolling)
         if len(self.event_log) > 50:
             self.event_log.pop(0)
@@ -671,36 +721,36 @@ class GameUI:
     def render_travel_screen(self, game_state: GameState):
         # Background - sky
         self.screen.fill(OCEAN_BLUE)
-        
+
         # Start video playing after day 2
         if game_state.day >= 2 and not self.video_playing:
             self.video_playing = True
-        
+
         # Check if we need to change video segment
         new_segment = self.get_current_segment(game_state.miles_traveled)
         if new_segment != self.current_segment:
             self.current_segment = new_segment
             self.load_video(new_segment)
-        
+
         # If no video loaded yet, load the starting one
         if self.has_video and not self.current_video:
             self.load_video(self.current_segment)
-        
+
         # === VIDEO/MAP AREA (Top portion) ===
         video_height = int(self.height * 0.65)  # 65% for video
         timeline_height = 80  # Timeline between video and bottom panels
-        
+
         # Calculate video dimensions maintaining aspect ratio (1664x1244 = 1.34:1)
         max_video_height = video_height - 100  # Leave room for title
         video_display_width = int(max_video_height * 1.34)
         video_display_height = max_video_height
-        
+
         # Video panel sized to fit video
         video_panel_width = video_display_width + 40
         self.draw_panel(
             15, 15, video_panel_width, video_height, BLACK, DARK_BROWN, thick=True, padding=5
         )
-        
+
         # Title at top (centered vertically in the title area)
         self.draw_text(
             "CONESTOGA - Oregon Trail",
@@ -710,20 +760,26 @@ class GameUI:
             45,  # Centered in ~70px title area
             center=True,
         )
-        
+
         # Video playback area
         video_area_y = 80
-        
+
         if self.has_video:
             # Get and display current video frame
             frame = self.get_video_frame()
             if frame:
                 # Scale frame maintaining aspect ratio, left aligned
-                scaled_frame = pygame.transform.scale(frame, (video_display_width, video_display_height))
+                scaled_frame = pygame.transform.scale(
+                    frame, (video_display_width, video_display_height)
+                )
                 self.screen.blit(scaled_frame, (30, video_area_y))
             else:
                 # Fallback: solid color with text
-                pygame.draw.rect(self.screen, DARK_GRAY, (30, video_area_y, video_display_width, video_display_height))
+                pygame.draw.rect(
+                    self.screen,
+                    DARK_GRAY,
+                    (30, video_area_y, video_display_width, video_display_height),
+                )
                 self.draw_text(
                     f"Traveling through {self.current_segment.replace('_', ' ').title()}",
                     self.heading_font,
@@ -735,10 +791,16 @@ class GameUI:
         else:
             # Fallback: use map image or solid color
             if self.map_image:
-                scaled_map = pygame.transform.scale(self.map_image, (video_display_width, video_display_height))
+                scaled_map = pygame.transform.scale(
+                    self.map_image, (video_display_width, video_display_height)
+                )
                 self.screen.blit(scaled_map, (30, video_area_y))
             else:
-                pygame.draw.rect(self.screen, PLAINS_GREEN, (30, video_area_y, video_display_width, video_display_height))
+                pygame.draw.rect(
+                    self.screen,
+                    PLAINS_GREEN,
+                    (30, video_area_y, video_display_width, video_display_height),
+                )
                 self.draw_text(
                     "Oregon Trail",
                     self.heading_font,
@@ -750,71 +812,75 @@ class GameUI:
 
         # === TIMELINE (Below video) ===
         timeline_y = video_height + 20
-        
+
         # Timeline panel
-        self.draw_panel(15, timeline_y, video_panel_width, timeline_height, BLACK, DARK_BROWN, thick=True, padding=5)
-        
+        self.draw_panel(
+            15,
+            timeline_y,
+            video_panel_width,
+            timeline_height,
+            BLACK,
+            DARK_BROWN,
+            thick=True,
+            padding=5,
+        )
+
         # Calculate centered timeline bar dimensions
         timeline_bar_width = 700  # Expanded width for better segment uniformity
         timeline_start_x = 15 + (video_panel_width - timeline_bar_width) // 2
-        
+
         # Vertically center the timeline content within the panel with padding
         content_height = 60  # Total height: day info + bar + labels
-        bar_y = timeline_y + (timeline_height - content_height) // 2 + 18  # Offset for day info above
+        bar_y = (
+            timeline_y + (timeline_height - content_height) // 2 + 18
+        )  # Offset for day info above
         bar_height = 12
-        pygame.draw.rect(self.screen, DARK_GRAY, (timeline_start_x, bar_y, timeline_bar_width, bar_height))
-        
+        pygame.draw.rect(
+            self.screen, DARK_GRAY, (timeline_start_x, bar_y, timeline_bar_width, bar_height)
+        )
+
         # Draw segment markers and labels
         total_miles = game_state.target_miles
         progress = game_state.miles_traveled / total_miles
-        
-        for i, segment in enumerate(self.trail_segments):
+
+        for _i, segment in enumerate(self.trail_segments):
             # Calculate position
             seg_start = segment["start_miles"] / total_miles
             seg_end = segment["end_miles"] / total_miles
             seg_x = timeline_start_x + int(seg_start * timeline_bar_width)
             seg_width = int((seg_end - seg_start) * timeline_bar_width)
-            
+
             # Highlight current segment
-            is_current = (game_state.miles_traveled >= segment["start_miles"] and 
-                         game_state.miles_traveled < segment["end_miles"])
+            is_current = (
+                game_state.miles_traveled >= segment["start_miles"]
+                and game_state.miles_traveled < segment["end_miles"]
+            )
             color = BRIGHT_YELLOW if is_current else GRAY
-            
+
             # Draw segment bar
             pygame.draw.rect(self.screen, color, (seg_x, bar_y, seg_width, bar_height), 2)
-            
+
             # Segment label - stack words vertically, centered
             words = segment["name"].split()
             label_x = seg_x + seg_width // 2
             label_y = bar_y + 20  # Start below the bar with padding
-            
+
             for word in words:
-                self.draw_text(
-                    word,
-                    self.tiny_font,
-                    color,
-                    label_x,
-                    label_y,
-                    center=True
-                )
+                self.draw_text(word, self.tiny_font, color, label_x, label_y, center=True)
                 label_y += 12  # Stack next word below
-        
+
         # Draw wagon icon at current position
         wagon_x = timeline_start_x + int(progress * timeline_bar_width)
         wagon_y = bar_y + bar_height // 2
         pygame.draw.circle(self.screen, BROWN, (wagon_x, wagon_y), 8)
         pygame.draw.circle(self.screen, OFF_WHITE, (wagon_x, wagon_y), 6)
-        
+
         # Overlay: Day and Distance (above the bar)
         overlay_y = bar_y - 18
         self.draw_text(
-            f"Day {game_state.day}",
-            self.small_font,
-            BRIGHT_YELLOW,
-            timeline_start_x,
-            overlay_y
+            f"Day {game_state.day}", self.small_font, BRIGHT_YELLOW, timeline_start_x, overlay_y
         )
-        
+
         miles_pct = min(100, int(100 * game_state.miles_traveled / total_miles))
         self.draw_text(
             f"{game_state.miles_traveled} / {total_miles} miles ({miles_pct}%)",
@@ -822,7 +888,7 @@ class GameUI:
             BRIGHT_YELLOW,
             timeline_start_x + timeline_bar_width,
             overlay_y,
-            right=True
+            right=True,
         )
 
         # === EVENT LOG (Right side) - extends to fill remaining space ===
@@ -869,13 +935,14 @@ class GameUI:
                 # Draw horizontal line separator
                 separator_y = log_y - 5
                 pygame.draw.line(
-                    self.screen, GRAY, 
-                    (log_x + 20, separator_y), 
-                    (log_x + log_width - 20, separator_y), 
-                    1
+                    self.screen,
+                    GRAY,
+                    (log_x + 20, separator_y),
+                    (log_x + log_width - 20, separator_y),
+                    1,
                 )
                 log_y += 10
-            
+
             color = OFF_WHITE
             if entry["category"] == "warning":
                 color = ORANGE
@@ -886,33 +953,37 @@ class GameUI:
 
             # Draw text with word wrapping
             text = entry["text"]
-            lines_height = self.draw_text(text, self.tiny_font, color, log_x + 20, log_y, max_width=log_width - 40)
+            lines_height = self.draw_text(
+                text, self.tiny_font, color, log_x + 20, log_y, max_width=log_width - 40
+            )
             log_y += lines_height + 4
-            
+
             # Draw resource changes if present
             resources = entry.get("resources", {})
             if resources:
                 resource_y = log_y
                 resource_x = log_x + 40
-                
+
                 # Display each resource change with icon
                 for resource, change in resources.items():
                     if change == 0:
                         continue
-                    
+
                     # Draw icon
                     icon_name = resource.lower()
                     self.draw_pixel_icon(icon_name, resource_x, resource_y - 2, 16)
-                    
+
                     # Draw change amount
                     change_color = GREEN if change > 0 else RED
                     change_text = f"{'+' if change > 0 else ''}{change}"
-                    self.draw_text(change_text, self.tiny_font, change_color, resource_x + 20, resource_y)
-                    
+                    self.draw_text(
+                        change_text, self.tiny_font, change_color, resource_x + 20, resource_y
+                    )
+
                     resource_x += 80  # Space between resource indicators
-                
+
                 log_y += 22
-            
+
             log_y += 3  # Small spacing between entries
             if log_y > event_log_height - 40:
                 break
@@ -1049,47 +1120,56 @@ class GameUI:
     ):
         # Start video playback after first event
         self.video_playing = True
-        
+
         # Dramatic dark background
         self.screen.fill(DARK_GRAY)
 
         # Calculate vertical centering for event content
         total_height = 60 + 200 + 20 + 60 + 20 + (len(event.choices) * 80)
         start_y = (self.height - 250 - total_height) // 2  # Account for bottom panel space
-        
+
         # Event title banner (no "*** EVENT ***" text)
         title_y = start_y
         self.draw_panel(self.width // 2 - 400, title_y, 800, 60, DARK_BROWN, BRIGHT_RED, thick=True)
-        self.draw_text(event.title, self.title_font, OFF_WHITE, self.width // 2, title_y + 25, center=True)
+        self.draw_text(
+            event.title, self.title_font, OFF_WHITE, self.width // 2, title_y + 25, center=True
+        )
 
         # Narrative panel
         narrative_y = title_y + 80
         self.draw_panel(40, narrative_y, self.width - 80, 200, BLACK, ORANGE, thick=True)
         self.draw_text(
-            event.narrative, self.body_font, OFF_WHITE, 70, narrative_y + 25, max_width=self.width - 140
+            event.narrative,
+            self.body_font,
+            OFF_WHITE,
+            70,
+            narrative_y + 25,
+            max_width=self.width - 140,
         )
 
         # Choices header
         choices_header_y = narrative_y + 220
         self.draw_panel(40, choices_header_y, self.width - 80, 60, DARK_BLUE, BRIGHT_YELLOW)
-        self.draw_text("Choose Your Action:", self.heading_font, OFF_WHITE, 60, choices_header_y + 15)
+        self.draw_text(
+            "Choose Your Action:", self.heading_font, OFF_WHITE, 60, choices_header_y + 15
+        )
 
         # Choices - use two columns if more than 3 choices
         num_choices = len(event.choices)
         use_two_columns = num_choices > 3
-        
+
         y_offset = choices_header_y + 80
-        
+
         if use_two_columns:
             # Two column layout
             choices_per_column = (num_choices + 1) // 2  # Round up
             col_width = (self.width - 80 - 30) // 2  # Subtract margins and gap
             choice_height = 70
-            
+
             for i, choice in enumerate(event.choices):
                 is_available = choice.is_available(game_state)
                 is_selected = i == selected_choice
-                
+
                 # Calculate position
                 col = i // choices_per_column
                 row = i % choices_per_column
@@ -1161,7 +1241,7 @@ class GameUI:
                         self.draw_text(
                             f"🔒 {lock_reason}", self.small_font, BRIGHT_RED, x_pos + 75, y_pos + 45
                         )
-            
+
             # Update y_offset for controls hint
             y_offset = y_offset + choices_per_column * (choice_height + 12)
         else:

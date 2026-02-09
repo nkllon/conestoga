@@ -74,7 +74,7 @@ class ItemCatalog:
 
     def get_name(self, item_id: str) -> str:
         return self.items.get(item_id, item_id)
-    
+
     def get_weight(self, item_id: str) -> int:
         return self.weights.get(item_id, 0)
 
@@ -147,45 +147,45 @@ class GameState:
         current = getattr(self, resource, 0)
         new_value = max(0, current + delta)
         setattr(self, resource, new_value)
-    
-    def calculate_wagon_weight(self, item_catalog: 'ItemCatalog') -> int:
+
+    def calculate_wagon_weight(self, item_catalog: "ItemCatalog") -> int:
         """Calculate total wagon weight in lbs"""
         total_weight = 0
-        
+
         # Food is already in lbs
         total_weight += self.food
-        
+
         # Water: 8.34 lbs per gallon
         total_weight += int(self.water * 8.34)
-        
+
         # Ammo: ~0.5 lbs per unit (box of bullets)
         total_weight += int(self.ammo * 0.5)
-        
+
         # Items from inventory
         for item_id, quantity in self.inventory.items():
             item_weight = item_catalog.get_weight(item_id)
             total_weight += item_weight * quantity
-        
+
         # Base wagon weight (empty wagon)
         total_weight += 400
-        
+
         return total_weight
 
     def advance_day(self, miles: int = 15):
         self.day += 1
         self.miles_traveled += miles
-        
+
         # Daily food/water consumption
         alive_party = [m for m in self.party if m.health > 0]
         self.modify_resource("food", -len(alive_party) * 2)
         self.modify_resource("water", -len(alive_party) * 1)
-        
+
         # Starvation/dehydration affects health
         if self.food <= 0:
             # All living members lose health from starvation
             for member in alive_party:
                 member.health = max(0, member.health - 10)
-        
+
         if self.water <= 0:
             # All living members lose health from dehydration (faster than starvation)
             for member in alive_party:

@@ -5,9 +5,9 @@ Provides validation for Beast message envelopes to ensure conformance
 with the standard Beast message format.
 """
 
-from typing import Dict, Any, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any
 
 
 class EnvelopeValidationError(Exception):
@@ -44,15 +44,15 @@ class BeastEnvelope:
 
     def __init__(
         self,
-        header: Dict[str, Any],
-        payload: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        header: dict[str, Any],
+        payload: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
     ):
         self.header = header
         self.payload = payload
         self.metadata = metadata or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert envelope to dictionary format."""
         result = {"header": self.header, "payload": self.payload}
         if self.metadata:
@@ -60,7 +60,7 @@ class BeastEnvelope:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BeastEnvelope":
+    def from_dict(cls, data: dict[str, Any]) -> "BeastEnvelope":
         """Create envelope from dictionary, with validation."""
         validate_envelope(data)
         return cls(
@@ -70,7 +70,7 @@ class BeastEnvelope:
         )
 
 
-def validate_envelope(envelope: Dict[str, Any]) -> None:
+def validate_envelope(envelope: dict[str, Any]) -> None:
     """
     Validates a Beast message envelope.
 
@@ -106,7 +106,7 @@ def validate_envelope(envelope: Dict[str, Any]) -> None:
     except (ValueError, AttributeError):
         raise EnvelopeValidationError(
             f"Invalid timestamp format: {header.get('timestamp')}"
-        )
+        ) from None
 
     # Validate trace_context if present
     if "trace_context" in header:
@@ -144,9 +144,9 @@ def validate_envelope(envelope: Dict[str, Any]) -> None:
 def create_envelope(
     sender: str,
     message_type: str,
-    payload_data: Dict[str, Any],
-    message_id: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    payload_data: dict[str, Any],
+    message_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> BeastEnvelope:
     """
     Creates a valid Beast envelope.

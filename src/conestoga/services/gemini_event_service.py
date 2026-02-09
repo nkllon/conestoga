@@ -6,7 +6,7 @@ import os
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 from google import genai
 from google.genai import types
@@ -14,7 +14,6 @@ from pydantic import BaseModel, ValidationError
 
 # Updated import for conestoga package structure
 from conestoga.models.events import EventDraft, EventResolution
-
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -28,8 +27,10 @@ SYSTEM_INSTRUCTION = """You are a narrative event generator for an Oregon Trail-
 Hard rules:
 - Output must be valid JSON that matches the provided response schema. Do not output markdown.
 - Keep text PG-13. No sexual content. No hate or slurs. No harassment. No extremist content.
-- Avoid medical advice or diagnosis. You may describe mild sickness as fiction, but do not give real-world medical instructions.
-- Avoid violence targeted at protected groups. If Indigenous people appear, portray them respectfully and avoid stereotypes.
+- Avoid medical advice or diagnosis. You may describe mild sickness as fiction, but do not give
+  real-world medical instructions.
+- Avoid violence targeted at protected groups. If Indigenous people appear, portray them
+  respectfully and avoid stereotypes.
 - Do not instruct the user to do anything in the real world; this is an in-game narrative only.
 - Keep event scenes concise and interactive.
 """
@@ -62,12 +63,13 @@ def _json_compact(obj: Any) -> str:
 # Service config + return types
 # ------------------------------
 
+
 @dataclass(frozen=True)
 class GeminiEventServiceConfig:
     # Default to a preview model but allow override via environment variable so that
     # deployments can switch models if this preview becomes unavailable.
     model: str = os.getenv("GEMINI_MODEL_ID", "gemini-3-flash-preview")
-    thinking_level: str = "low"            # "minimal/low/medium/high" depending on model
+    thinking_level: str = "low"  # "minimal/low/medium/high" depending on model
     max_output_tokens: int = 2048
     # retry logic
     max_attempts: int = 3
@@ -80,6 +82,8 @@ class GeminiEventServiceConfig:
                 "GeminiEventServiceConfig.model must be a non-empty string. "
                 "Set GEMINI_MODEL_ID to a valid Gemini model id."
             )
+
+
 class GeminiEventServiceError(RuntimeError):
     pass
 
@@ -94,7 +98,7 @@ class GeminiEventService:
       - thinking level control
     """
 
-    def __init__(self, cfg: GeminiEventServiceConfig, api_key: Optional[str] = None):
+    def __init__(self, cfg: GeminiEventServiceConfig, api_key: str | None = None):
         self.cfg = cfg
 
         # The SDK can also auto-pick up GEMINI_API_KEY or GOOGLE_API_KEY from env.
@@ -108,14 +112,14 @@ class GeminiEventService:
 
     def close(self) -> None:
         # Good hygiene: close underlying HTTP connections if your app exits.
-        # self.client.close() # google-genai client doesn't explicitly require close, but good practice if available
-        pass 
+        # self.client.close()  # client doesn't require close, but good practice
+        pass
 
     # ------------------------------
     # Public API
     # ------------------------------
 
-    def generate_event_draft(self, game_state: Dict[str, Any]) -> EventDraft:
+    def generate_event_draft(self, game_state: dict[str, Any]) -> EventDraft:
         event_id = str(uuid.uuid4())
         prompt = self._build_draft_prompt(event_id=event_id, game_state=game_state)
         return self._call_structured(EventDraft, prompt)
@@ -124,8 +128,8 @@ class GeminiEventService:
         self,
         draft: EventDraft,
         choice_id: str,
-        game_state: Dict[str, Any],
-        rng: Optional[Dict[str, Any]] = None,
+        game_state: dict[str, Any],
+        rng: dict[str, Any] | None = None,
     ) -> EventResolution:
         prompt = self._build_resolution_prompt(
             event_id=draft.event_id,
@@ -140,7 +144,7 @@ class GeminiEventService:
     # Prompt builders
     # ------------------------------
 
-    def _build_draft_prompt(self, event_id: str, game_state: Dict[str, Any]) -> str:
+    def _build_draft_prompt(self, event_id: str, game_state: dict[str, Any]) -> str:
         """
         Provide only the state the model needs; keep it compact to reduce latency/cost.
         """
@@ -178,11 +182,12 @@ Game state (JSON):
         event_id: str,
         choice_id: str,
         draft: EventDraft,
-        game_state: Dict[str, Any],
-        rng: Dict[str, Any],
+        game_state: dict[str, Any],
+        rng: dict[str, Any],
     ) -> str:
         """
-        The resolution prompt includes the draft + player choice, and can incorporate RNG we compute locally.
+        The resolution prompt includes the draft + player choice, and can incorporate RNG we compute
+        locally.
         """
         # Keep the embedded draft small (avoid dumping the full schema or huge text)
         draft_payload = {
@@ -190,7 +195,10 @@ Game state (JSON):
             "title": draft.title,
             "event_type": draft.event_type,
             "scene_text": draft.scene_text,
-            "choices": [{"choice_id": c.choice_id, "label": c.label, "prompt": c.prompt} for c in draft.choices],
+            "choices": [
+                {"choice_id": c.choice_id, "label": c.label, "prompt": c.prompt}
+                for c in draft.choices
+            ],
         }
 
         state_payload = {
@@ -229,12 +237,12 @@ RNG inputs (JSON) - treat as authoritative:
     # Core call + validation + repair
     # ------------------------------
 
-    def _call_structured(self, schema_model: Type[T], prompt: str) -> T:
+    def _call_structured(self, schema_model: type[T], prompt: str) -> T:
         """
         Calls Gemini with structured outputs and validates into the target Pydantic model.
         Includes backoff + repair loops.
         """
-        last_err: Optional[Exception] = None
+        last_err: Exception | None = None
         backoff = self.cfg.initial_backoff_s
 
         for attempt in range(1, self.cfg.max_attempts + 1):
@@ -245,13 +253,12 @@ RNG inputs (JSON) - treat as authoritative:
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_INSTRUCTION,
                         max_output_tokens=self.cfg.max_output_tokens,
-
                         # Thinking control (Gemini 3):
-                        thinking_config=types.ThinkingConfig(thinking_level=self.cfg.thinking_level),
-
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=self.cfg.thinking_level
+                        ),
                         # Safety settings:
                         safety_settings=self.safety_settings,
-
                         # Structured output:
                         response_mime_type="application/json",
                         response_schema=schema_model,
@@ -278,9 +285,11 @@ RNG inputs (JSON) - treat as authoritative:
                     continue
                 break
 
-        raise GeminiEventServiceError(f"Gemini call failed after {self.cfg.max_attempts} attempts: {last_err}")
+        raise GeminiEventServiceError(
+            f"Gemini call failed after {self.cfg.max_attempts} attempts: {last_err}"
+        )
 
-    def _repair_json(self, schema_model: Type[T], raw_text: str, error: str) -> T:
+    def _repair_json(self, schema_model: type[T], raw_text: str, error: str) -> T:
         """
         Second-pass “fix JSON to match schema” call.
         Uses the same response_schema to force compliance.
@@ -321,7 +330,7 @@ Return ONLY corrected JSON that matches the schema. Do not add commentary.
     # Safety settings tuned for this game
     # ------------------------------
 
-    def _default_safety_settings(self) -> List[types.SafetySetting]:
+    def _default_safety_settings(self) -> list[types.SafetySetting]:
         """
         Hackathon-safe defaults: block low+ for hate/sexual; be moderate on harassment/danger.
         Adjust after playtesting so you don't accidentally block normal frontier narrative.

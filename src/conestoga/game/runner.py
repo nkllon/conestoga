@@ -188,7 +188,7 @@ class ConestogaGame:
                 self.mode = GameMode.EVENT
                 self.days_since_event = 0
                 print(f"[Event] Using prefetched: {self.current_event.title}")
-                
+
                 # Log the full event description
                 self.ui.add_to_log(self.current_event.narrative, "warning")
                 if self.gemini.last_event_source == "fallback":
@@ -244,10 +244,10 @@ class ConestogaGame:
             old_water = self.game_state.water
             old_ammo = self.game_state.ammo
             old_money = self.game_state.money
-            
+
             self.current_resolution = resolution.apply(self.game_state)
             print(f"[Resolution] {self.current_resolution}")
-            
+
             # Calculate resource changes
             resources = {
                 "food": self.game_state.food - old_food,
@@ -255,14 +255,12 @@ class ConestogaGame:
                 "ammo": self.game_state.ammo - old_ammo,
                 "money": self.game_state.money - old_money,
             }
-            
+
             # Add full resolution to event log with resource changes
             if self.current_resolution:
                 self.ui.add_to_log(self.current_resolution, "info", resources)
             if self.gemini.last_resolution_source == "fallback":
-                self.fallback_monitor.record_resolution(
-                    "fallback", self.gemini.last_failure_reason
-                )
+                self.fallback_monitor.record_resolution("fallback", self.gemini.last_failure_reason)
 
         self._sync_gemini_status()
 
@@ -278,7 +276,7 @@ class ConestogaGame:
         # Calculate wagon weight and adjust travel distance
         wagon_weight = self.game_state.calculate_wagon_weight(self.item_catalog)
         miles_today = random.randint(12, 18)
-        
+
         # Reduce travel distance if overloaded (2000 lbs is optimal)
         if wagon_weight > 2000:
             excess_weight = wagon_weight - 2000
@@ -286,8 +284,11 @@ class ConestogaGame:
             penalty = min(miles_today - 5, excess_weight // 200)
             miles_today = max(5, miles_today - penalty)
             if penalty > 0:
-                print(f"[Weight] Wagon overloaded ({wagon_weight} lbs) - travel reduced by {penalty} miles")
-        
+                print(
+                    f"[Weight] Wagon overloaded ({wagon_weight} lbs) - "
+                    f"travel reduced by {penalty} miles"
+                )
+
         self.game_state.advance_day(miles_today)
 
         # Calculate daily resource consumption
@@ -343,10 +344,15 @@ class ConestogaGame:
 
         terrain = self.game_state.biome.value
         if terrain in terrain_stories:
-            self.ui.add_to_log(random.choice(terrain_stories[terrain]), "info", daily_resources, is_day_start=True)
+            self.ui.add_to_log(
+                random.choice(terrain_stories[terrain]), "info", daily_resources, is_day_start=True
+            )
         else:
             self.ui.add_to_log(
-                f"Day {self.game_state.day}: Another {miles_today} miles closer to Oregon.", "info", daily_resources, is_day_start=True
+                f"Day {self.game_state.day}: Another {miles_today} miles closer to Oregon.",
+                "info",
+                daily_resources,
+                is_day_start=True,
             )
 
         # Narrative resource warnings

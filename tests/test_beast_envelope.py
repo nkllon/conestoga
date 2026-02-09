@@ -1,11 +1,14 @@
 """Tests for Beast envelope validation and creation"""
-import pytest
+
 from datetime import datetime
+
+import pytest
+
 from conestoga.beast.envelope import (
     BeastEnvelope,
-    validate_envelope,
-    create_envelope,
     EnvelopeValidationError,
+    create_envelope,
+    validate_envelope,
 )
 
 
@@ -267,9 +270,7 @@ class TestEnvelopeCreation:
 
     def test_create_envelope_timestamp_format(self):
         """Test that created envelope has valid ISO timestamp"""
-        envelope = create_envelope(
-            sender="agent-1", message_type="test_message", payload_data={}
-        )
+        envelope = create_envelope(sender="agent-1", message_type="test_message", payload_data={})
 
         envelope_dict = envelope.to_dict()
         timestamp = envelope_dict["header"]["timestamp"]
