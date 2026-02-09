@@ -1,22 +1,24 @@
 """Tests for GeminiEventService"""
-import json
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-from pydantic import ValidationError
 
+import json
+from dataclasses import FrozenInstanceError
+from unittest.mock import Mock, patch
+
+import pytest
+
+from conestoga.models.events import (
+    DraftSchemaVersion,
+    EventChoice,
+    EventDraft,
+    EventResolution,
+    EventType,
+    ResolutionSchemaVersion,
+    RiskLevel,
+)
 from conestoga.services.gemini_event_service import (
     GeminiEventService,
     GeminiEventServiceConfig,
     GeminiEventServiceError,
-)
-from conestoga.models.events import (
-    EventDraft,
-    EventResolution,
-    EventChoice,
-    EventType,
-    RiskLevel,
-    DraftSchemaVersion,
-    ResolutionSchemaVersion,
 )
 
 
@@ -43,7 +45,7 @@ def mock_client():
 @pytest.fixture
 def service(service_config, mock_client):
     """Create a GeminiEventService instance with mocked client"""
-    with patch('conestoga.services.gemini_event_service.genai.Client') as mock_genai:
+    with patch("conestoga.services.gemini_event_service.genai.Client") as mock_genai:
         mock_genai.return_value = mock_client
         service = GeminiEventService(service_config, api_key="test_key")
         service.client = mock_client
@@ -130,14 +132,14 @@ class TestGeminiEventServiceInit:
 
     def test_init_with_api_key(self, service_config):
         """Test initialization with explicit API key"""
-        with patch('conestoga.services.gemini_event_service.genai.Client') as mock_genai:
-            service = GeminiEventService(service_config, api_key="test_key")
+        with patch("conestoga.services.gemini_event_service.genai.Client") as mock_genai:
+            _ = GeminiEventService(service_config, api_key="test_key")
             mock_genai.assert_called_once_with(api_key="test_key")
 
     def test_init_without_api_key(self, service_config):
         """Test initialization without explicit API key (uses environment)"""
-        with patch('conestoga.services.gemini_event_service.genai.Client') as mock_genai:
-            service = GeminiEventService(service_config)
+        with patch("conestoga.services.gemini_event_service.genai.Client") as mock_genai:
+            _ = GeminiEventService(service_config)
             mock_genai.assert_called_once_with()
 
     def test_safety_settings_configured(self, service, service_config):
@@ -153,7 +155,9 @@ class TestGeminiEventServiceInit:
 class TestGenerateEventDraft:
     """Tests for generate_event_draft method"""
 
-    def test_generate_event_draft_success(self, service, mock_client, sample_game_state, sample_event_draft):
+    def test_generate_event_draft_success(
+        self, service, mock_client, sample_game_state, sample_event_draft
+    ):
         """Test successful event draft generation"""
         # Mock the API response
         mock_response = Mock()
@@ -167,7 +171,9 @@ class TestGenerateEventDraft:
         assert result.event_type == EventType.HAZARD
         assert len(result.choices) == 2
 
-    def test_generate_event_draft_prompt_contains_game_state(self, service, mock_client, sample_game_state):
+    def test_generate_event_draft_prompt_contains_game_state(
+        self, service, mock_client, sample_game_state
+    ):
         """Test that the prompt includes relevant game state"""
         mock_response = Mock()
         # Create a valid EventDraft response
@@ -197,15 +203,17 @@ class TestGenerateEventDraft:
         # Verify the prompt was generated and passed
         assert mock_client.models.generate_content.called
         call_args = mock_client.models.generate_content.call_args
-        prompt = call_args[1]['contents']
-        
+        prompt = call_args[1]["contents"]
+
         # Check that key game state elements are in the prompt
         assert "Independence, Missouri" in prompt or "location" in prompt.lower()
 
-    def test_generate_event_draft_generates_unique_event_id(self, service, mock_client, sample_game_state):
+    def test_generate_event_draft_generates_unique_event_id(
+        self, service, mock_client, sample_game_state
+    ):
         """Test that each call generates a unique event ID"""
-        mock_response = Mock()
-        
+        _ = Mock()
+
         def create_draft_with_id(event_id):
             return EventDraft(
                 schema_version=DraftSchemaVersion.V1,
@@ -228,12 +236,13 @@ class TestGenerateEventDraft:
 
         # Track event IDs returned
         event_ids = []
-        
+
         def mock_generate(*args, **kwargs):
             # Extract event_id from the prompt
-            prompt = kwargs['contents']
+            prompt = kwargs["contents"]
             import re
-            match = re.search(r'event_id MUST be exactly: ([a-f0-9\-]+)', prompt)
+
+            match = re.search(r"event_id MUST be exactly: ([a-f0-9\-]+)", prompt)
             if match:
                 event_id = match.group(1)
                 event_ids.append(event_id)
@@ -244,8 +253,8 @@ class TestGenerateEventDraft:
 
         mock_client.models.generate_content.side_effect = mock_generate
 
-        result1 = service.generate_event_draft(sample_game_state)
-        result2 = service.generate_event_draft(sample_game_state)
+        _ = service.generate_event_draft(sample_game_state)
+        _ = service.generate_event_draft(sample_game_state)
 
         # Each call should generate a different UUID
         assert len(event_ids) == 2
@@ -255,7 +264,9 @@ class TestGenerateEventDraft:
 class TestResolveEvent:
     """Tests for resolve_event method"""
 
-    def test_resolve_event_success(self, service, mock_client, sample_event_draft, sample_game_state, sample_event_resolution):
+    def test_resolve_event_success(
+        self, service, mock_client, sample_event_draft, sample_game_state, sample_event_resolution
+    ):
         """Test successful event resolution"""
         mock_response = Mock()
         mock_response.text = sample_event_resolution.model_dump_json()
@@ -271,7 +282,9 @@ class TestResolveEvent:
         assert result.event_id == "test-event-123"
         assert result.choice_id == "A"
 
-    def test_resolve_event_with_rng(self, service, mock_client, sample_event_draft, sample_game_state, sample_event_resolution):
+    def test_resolve_event_with_rng(
+        self, service, mock_client, sample_event_draft, sample_game_state, sample_event_resolution
+    ):
         """Test event resolution with RNG inputs"""
         mock_response = Mock()
         mock_response.text = sample_event_resolution.model_dump_json()
@@ -286,13 +299,15 @@ class TestResolveEvent:
         )
 
         assert isinstance(result, EventResolution)
-        
+
         # Verify RNG was passed in the prompt
         call_args = mock_client.models.generate_content.call_args
-        prompt = call_args[1]['contents']
+        prompt = call_args[1]["contents"]
         assert "RNG" in prompt or "rng" in prompt.lower()
 
-    def test_resolve_event_prompt_contains_draft_and_choice(self, service, mock_client, sample_event_draft, sample_game_state, sample_event_resolution):
+    def test_resolve_event_prompt_contains_draft_and_choice(
+        self, service, mock_client, sample_event_draft, sample_game_state, sample_event_resolution
+    ):
         """Test that resolution prompt includes draft and choice info"""
         mock_response = Mock()
         mock_response.text = sample_event_resolution.model_dump_json()
@@ -305,8 +320,8 @@ class TestResolveEvent:
         )
 
         call_args = mock_client.models.generate_content.call_args
-        prompt = call_args[1]['contents']
-        
+        prompt = call_args[1]["contents"]
+
         # Verify key elements are in prompt
         assert "test-event-123" in prompt  # event_id
         assert "A" in prompt or "choice_id" in prompt.lower()
@@ -315,18 +330,22 @@ class TestResolveEvent:
 class TestValidationAndRepair:
     """Tests for validation and repair logic"""
 
-    def test_validation_success_no_repair_needed(self, service, mock_client, sample_game_state, sample_event_draft):
+    def test_validation_success_no_repair_needed(
+        self, service, mock_client, sample_game_state, sample_event_draft
+    ):
         """Test that valid JSON doesn't trigger repair"""
         mock_response = Mock()
         mock_response.text = sample_event_draft.model_dump_json()
         mock_client.models.generate_content.return_value = mock_response
 
-        result = service.generate_event_draft(sample_game_state)
+        _ = service.generate_event_draft(sample_game_state)
 
         # Should only be called once (no repair call)
         assert mock_client.models.generate_content.call_count == 1
 
-    def test_validation_triggers_repair_on_invalid_json(self, service, mock_client, sample_game_state, sample_event_draft):
+    def test_validation_triggers_repair_on_invalid_json(
+        self, service, mock_client, sample_game_state, sample_event_draft
+    ):
         """Test that invalid JSON triggers repair logic"""
         # First response: invalid (missing required field)
         invalid_response = Mock()
@@ -363,7 +382,7 @@ class TestValidationAndRepair:
         assert isinstance(result, EventDraft)
         # Verify repair prompt was sent
         call_args = mock_client.models.generate_content.call_args
-        prompt = call_args[1]['contents']
+        prompt = call_args[1]["contents"]
         assert "validation" in prompt.lower() or "error" in prompt.lower()
 
     def test_repair_json_empty_response_raises_error(self, service, mock_client):
@@ -415,9 +434,11 @@ class TestErrorHandling:
         # Should have been called max_attempts times
         assert mock_client.models.generate_content.call_count == service.cfg.max_attempts
 
-    def test_retry_with_exponential_backoff(self, service, mock_client, sample_game_state, sample_event_draft):
+    def test_retry_with_exponential_backoff(
+        self, service, mock_client, sample_game_state, sample_event_draft
+    ):
         """Test that retries use exponential backoff"""
-        with patch('conestoga.services.gemini_event_service.time.sleep') as mock_sleep:
+        with patch("conestoga.services.gemini_event_service.time.sleep") as mock_sleep:
             # First two calls fail, third succeeds
             error = Exception("Temporary error")
             success_response = Mock()
@@ -429,7 +450,7 @@ class TestErrorHandling:
 
             # Should have slept twice (after first two failures)
             assert mock_sleep.call_count == 2
-            
+
             # Verify exponential backoff (each sleep should be longer)
             sleep_calls = [call[0][0] for call in mock_sleep.call_args_list]
             assert sleep_calls[0] == service.cfg.initial_backoff_s
@@ -442,11 +463,11 @@ class TestSafetySettings:
     def test_safety_settings_has_all_categories(self, service):
         """Test that all safety categories are configured"""
         from google.genai import types
-        
+
         safety_settings = service._default_safety_settings()
-        
+
         categories = {setting.category for setting in safety_settings}
-        
+
         # Should have 4 harm categories
         assert types.HarmCategory.HARM_CATEGORY_HATE_SPEECH in categories
         assert types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT in categories
@@ -456,23 +477,31 @@ class TestSafetySettings:
     def test_safety_settings_thresholds(self, service):
         """Test that safety thresholds are properly configured"""
         from google.genai import types
-        
+
         safety_settings = service._default_safety_settings()
         settings_dict = {setting.category: setting.threshold for setting in safety_settings}
-        
+
         # Hate speech and sexually explicit should block low and above
-        assert settings_dict[types.HarmCategory.HARM_CATEGORY_HATE_SPEECH] == \
-            types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE
-        assert settings_dict[types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT] == \
-            types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE
-        
+        assert (
+            settings_dict[types.HarmCategory.HARM_CATEGORY_HATE_SPEECH]
+            == types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE
+        )
+        assert (
+            settings_dict[types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT]
+            == types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE
+        )
+
         # Harassment should block medium and above
-        assert settings_dict[types.HarmCategory.HARM_CATEGORY_HARASSMENT] == \
-            types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-        
+        assert (
+            settings_dict[types.HarmCategory.HARM_CATEGORY_HARASSMENT]
+            == types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+        )
+
         # Dangerous content should only block high
-        assert settings_dict[types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT] == \
-            types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+        assert (
+            settings_dict[types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT]
+            == types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+        )
 
 
 class TestPromptBuilding:
@@ -481,26 +510,28 @@ class TestPromptBuilding:
     def test_build_draft_prompt_includes_constraints(self, service, sample_game_state):
         """Test that draft prompt includes all necessary constraints"""
         prompt = service._build_draft_prompt("test-event-id", sample_game_state)
-        
+
         # Should include event_id
         assert "test-event-id" in prompt
-        
+
         # Should include constraints
         assert "2-4" in prompt or "choices" in prompt.lower()
-        
+
         # Should include allowed resources and items
         assert "food" in prompt.lower() or "resource" in prompt.lower()
 
     def test_build_draft_prompt_includes_recent_log(self, service, sample_game_state):
         """Test that draft prompt includes recent log entries"""
         sample_game_state["recent_log"] = ["Event 1", "Event 2", "Event 3"]
-        
+
         prompt = service._build_draft_prompt("test-id", sample_game_state)
-        
+
         # Should include recent log
         assert "Event 1" in prompt or "recent_log" in prompt.lower()
 
-    def test_build_resolution_prompt_includes_draft(self, service, sample_event_draft, sample_game_state):
+    def test_build_resolution_prompt_includes_draft(
+        self, service, sample_event_draft, sample_game_state
+    ):
         """Test that resolution prompt includes draft information"""
         prompt = service._build_resolution_prompt(
             event_id="test-event-123",
@@ -509,14 +540,14 @@ class TestPromptBuilding:
             game_state=sample_game_state,
             rng={"roll": 50},
         )
-        
+
         # Should include event and choice IDs
         assert "test-event-123" in prompt
         assert "A" in prompt
-        
+
         # Should include draft title
         assert "River Crossing" in prompt or "title" in prompt.lower()
-        
+
         # Should include RNG
         assert "50" in prompt or "rng" in prompt.lower()
 
@@ -527,7 +558,7 @@ class TestServiceConfiguration:
     def test_default_config_values(self):
         """Test default configuration values"""
         config = GeminiEventServiceConfig()
-        
+
         assert config.model == "gemini-3-flash-preview"
         assert config.thinking_level == "low"
         assert config.max_output_tokens == 2048
@@ -543,7 +574,7 @@ class TestServiceConfiguration:
             max_attempts=5,
             initial_backoff_s=1.0,
         )
-        
+
         assert config.model == "custom-model"
         assert config.thinking_level == "high"
         assert config.max_output_tokens == 4096
@@ -553,8 +584,8 @@ class TestServiceConfiguration:
     def test_config_is_frozen(self):
         """Test that config dataclass is frozen (immutable)"""
         config = GeminiEventServiceConfig()
-        
-        with pytest.raises(Exception):  # FrozenInstanceError in dataclasses
+
+        with pytest.raises(FrozenInstanceError):
             config.model = "new-model"
 
 
@@ -565,7 +596,7 @@ class TestServiceClose:
         """Test that close method exists and can be called"""
         # Should not raise any errors
         service.close()
-        
+
     def test_close_is_safe_to_call_multiple_times(self, service):
         """Test that close can be called multiple times safely"""
         service.close()

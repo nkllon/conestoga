@@ -1,18 +1,23 @@
 """Tests for Beast observability trace context and metrics"""
+
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from conestoga.beast.observability import ObservabilityStack
 
 
 @pytest.fixture(autouse=True)
 def mock_prometheus_and_observability():
     """Mock Prometheus and observability components to avoid registry conflicts"""
-    with patch("conestoga.beast.observability.Counter") as mock_counter, \
-         patch("conestoga.beast.observability.Histogram") as mock_histogram, \
-         patch("conestoga.beast.observability.Gauge") as mock_gauge, \
-         patch("conestoga.beast.observability.start_http_server") as mock_http_server, \
-         patch("conestoga.beast.observability.OTLPSpanExporter") as mock_exporter, \
-         patch("conestoga.beast.observability.trace") as mock_trace:
+    with (
+        patch("conestoga.beast.observability.Counter") as mock_counter,
+        patch("conestoga.beast.observability.Histogram") as mock_histogram,
+        patch("conestoga.beast.observability.Gauge") as mock_gauge,
+        patch("conestoga.beast.observability.start_http_server") as mock_http_server,
+        patch("conestoga.beast.observability.OTLPSpanExporter") as mock_exporter,
+        patch("conestoga.beast.observability.trace") as mock_trace,
+    ):
         yield {
             "counter": mock_counter,
             "histogram": mock_histogram,
@@ -47,7 +52,7 @@ class TestObservabilityStackInit:
         mock_trace.get_tracer_provider.return_value = mock_tracer_provider
         mock_trace.get_tracer.return_value = Mock()
 
-        stack = ObservabilityStack(
+        _ = ObservabilityStack(
             service_name="test-service",
             jaeger_host="jaeger.example.com",
             jaeger_port=4318,
@@ -104,7 +109,7 @@ class TestObservabilityStackTraceContext:
     def test_inject_trace_context(self, mock_prometheus_and_observability):
         """Test trace context injection into message"""
         mock_trace = mock_prometheus_and_observability["trace"]
-        
+
         # Setup mock span context
         mock_span_context = Mock()
         mock_span_context.trace_id = 0x1234567890ABCDEF
@@ -141,7 +146,7 @@ class TestObservabilityStackTraceContext:
     def test_inject_trace_context_creates_header(self, mock_prometheus_and_observability):
         """Test trace context injection creates header if missing"""
         mock_trace = mock_prometheus_and_observability["trace"]
-        
+
         mock_span_context = Mock()
         mock_span_context.trace_id = 0xABCDEF
         mock_span_context.span_id = 0x123456
@@ -186,7 +191,7 @@ class TestObservabilityStackTraceContext:
         }
 
         with patch("conestoga.beast.observability.trace.SpanContext") as mock_span_context:
-            result = stack.extract_trace_context(message)
+            _ = stack.extract_trace_context(message)
 
             # Verify SpanContext was created with correct parameters
             mock_span_context.assert_called_once()
@@ -228,7 +233,7 @@ class TestObservabilityStackTraceContext:
     def test_trace_context_roundtrip(self, mock_prometheus_and_observability):
         """Test that inject and extract are compatible"""
         mock_trace = mock_prometheus_and_observability["trace"]
-        
+
         # Setup mock for injection
         mock_span_context = Mock()
         mock_span_context.trace_id = 0x1234567890ABCDEF
@@ -273,8 +278,8 @@ class TestObservabilityStackMetrics:
     def test_messages_total_counter(self, mock_prometheus_and_observability):
         """Test messages_total counter creation"""
         mock_counter = mock_prometheus_and_observability["counter"]
-        
-        stack = ObservabilityStack(
+
+        _ = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
             jaeger_port=4317,
@@ -282,15 +287,13 @@ class TestObservabilityStackMetrics:
         )
 
         # Verify Counter was called for messages_total
-        assert any(
-            call[0][0] == "beast_messages_total" for call in mock_counter.call_args_list
-        )
+        assert any(call[0][0] == "beast_messages_total" for call in mock_counter.call_args_list)
 
     def test_processing_duration_histogram(self, mock_prometheus_and_observability):
         """Test processing_duration histogram creation"""
         mock_histogram = mock_prometheus_and_observability["histogram"]
-        
-        stack = ObservabilityStack(
+
+        _ = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
             jaeger_port=4317,
@@ -306,8 +309,8 @@ class TestObservabilityStackMetrics:
     def test_connection_status_gauge(self, mock_prometheus_and_observability):
         """Test connection_status gauge creation"""
         mock_gauge = mock_prometheus_and_observability["gauge"]
-        
-        stack = ObservabilityStack(
+
+        _ = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
             jaeger_port=4317,
@@ -315,15 +318,13 @@ class TestObservabilityStackMetrics:
         )
 
         # Verify Gauge was called for connection_status
-        assert any(
-            call[0][0] == "beast_connection_status" for call in mock_gauge.call_args_list
-        )
+        assert any(call[0][0] == "beast_connection_status" for call in mock_gauge.call_args_list)
 
     def test_hacp_violations_counter(self, mock_prometheus_and_observability):
         """Test hacp_violations counter creation"""
         mock_counter = mock_prometheus_and_observability["counter"]
-        
-        stack = ObservabilityStack(
+
+        _ = ObservabilityStack(
             service_name="test-service",
             jaeger_host="localhost",
             jaeger_port=4317,
@@ -331,6 +332,4 @@ class TestObservabilityStackMetrics:
         )
 
         # Verify Counter was called for hacp_violations
-        assert any(
-            call[0][0] == "hacp_violations_total" for call in mock_counter.call_args_list
-        )
+        assert any(call[0][0] == "hacp_violations_total" for call in mock_counter.call_args_list)

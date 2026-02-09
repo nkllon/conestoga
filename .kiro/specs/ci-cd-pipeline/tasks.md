@@ -18,11 +18,17 @@
   - Surface build logs and metadata summaries to the status reporter for traceability.
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] (P) 4. Add lint and formatting gates
+- [ ] (P) 4. Add lint, type-check, and formatting gates
   - Execute ruff lint and format checks on Python sources, failing the pipeline on violations.
-  - Publish lint results in job summaries for PR review.
+  - Execute static type checking (e.g., pyright) to enforce type safety.
+  - Publish lint/type results in job summaries for PR review.
   - Cache lint environment safely to keep runtimes within CI budget while honoring lock changes.
-  - _Requirements: 1.1, 1.2, 3.3_
+  - _Requirements: 1.1, 1.2, 3.3, 3.5_
+
+- [ ] 4b. Implement Documentation Build
+  - Port `mermaid-svg` and `docx` generation scripts/targets from Eudorus.
+  - Ensure documentation is built and validated in CI.
+  - _Requirements: 2.5_
 
 - [ ] 5. Implement headless test stage
   - Configure pytest to run with CI and UI_HEADLESS flags plus isolated temp directories to avoid cross-test contamination.

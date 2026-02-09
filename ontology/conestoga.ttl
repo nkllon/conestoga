@@ -27,6 +27,8 @@
 :R3_Resolutions a :Requirement ; rdfs:label "Requirement 3.1-3.4 Choice Resolution and Effects" .
 :R4_UI a :Requirement ; rdfs:label "Requirement 4.1-4.4 UI Feedback" .
 :R5_Observability a :Requirement ; rdfs:label "Requirement 5.1-5.3 Observability and Recovery" .
+:R6_DistributedAgent a :Requirement ; rdfs:label "Requirement 6.1-6.4 Distributed Agent Framework" .
+:R7_ContentIngestion a :Requirement ; rdfs:label "Requirement 7.1-7.2 Content Ingestion" .
 
 # Components
 :ConestogaGameComponent a :Component ; rdfs:label "ConestogaGame Loop" .
@@ -34,6 +36,11 @@
 :ValidatorComponent a :Component ; rdfs:label "Validation Engine" .
 :FallbackMonitorComponent a :Component ; rdfs:label "Fallback Monitor" .
 :GameUIComponent a :Component ; rdfs:label "GameUI" .
+:BeastComponent a :Component ; rdfs:label "Beast Agent Framework" .
+:ObservabilityComponent a :Component ; rdfs:label "Observability Stack" .
+:HACPComponent a :Component ; rdfs:label "HACP Interception Layer" .
+:AuditComponent a :Component ; rdfs:label "Audit Helper" .
+:TeamsIngestionComponent a :Component ; rdfs:label "Teams Content Ingestion" .
 
 # Design Artifacts
 :DesignDoc a :DesignArtifact ;
@@ -79,11 +86,67 @@
   :implementsComponent :GameUIComponent ;
   :satisfies :R1_TravelLoop, :R4_UI .
 
+:BeastAdapterImpl a :Implementation ;
+  rdfs:label "Beast Adapter" ;
+  :path "src/conestoga/beast/adapter.py" ;
+  :implementsComponent :BeastComponent ;
+  :satisfies :R6_DistributedAgent, :R5_Observability .
+
+:BeastSemanticsImpl a :Implementation ;
+  rdfs:label "Beast Semantics" ;
+  :path "src/conestoga/beast/semantics.py" ;
+  :implementsComponent :BeastComponent ;
+  :satisfies :R6_DistributedAgent .
+
+:ObservabilityImpl a :Implementation ;
+  rdfs:label "Observability Implementation" ;
+  :path "src/conestoga/beast/observability.py" ;
+  :implementsComponent :ObservabilityComponent ;
+  :satisfies :R5_Observability .
+
+:HACPInterceptorImpl a :Implementation ;
+  rdfs:label "HACP Interceptor" ;
+  :path "src/conestoga/hacp/interceptor.py" ;
+  :implementsComponent :HACPComponent ;
+  :satisfies :R6_DistributedAgent .
+
+:AuditImpl a :Implementation ;
+  rdfs:label "Audit Helper" ;
+  :path "src/conestoga/game/audit.py" ;
+  :implementsComponent :AuditComponent ;
+  :satisfies :R5_Observability .
+
+:TeamsContentFetcherImpl a :Implementation ;
+  rdfs:label "Teams Content Fetcher" ;
+  :path "src/conestoga/teams_link_ingestion/content_fetcher.py" ;
+  :implementsComponent :TeamsIngestionComponent ;
+  :satisfies :R7_ContentIngestion .
+
 # Tests
 :TestValidation a :TestCase ;
   rdfs:label "Validation and fallback tests" ;
   :path "tests/test_game.py" ;
   :verifies :R2_Events, :R3_Resolutions, :R5_Observability .
+
+:TestBeastAdapter a :TestCase ;
+  rdfs:label "Beast Adapter Tests" ;
+  :path "tests/test_beast_adapter.py" ;
+  :verifies :R6_DistributedAgent, :R5_Observability .
+
+:TestBeastSemantics a :TestCase ;
+  rdfs:label "Beast Semantics Tests" ;
+  :path "tests/test_beast_semantics.py" ;
+  :verifies :R6_DistributedAgent .
+
+:TestBeastObservability a :TestCase ;
+  rdfs:label "Beast Observability Tests" ;
+  :path "tests/test_beast_observability.py" ;
+  :verifies :R5_Observability .
+
+:TestAudit a :TestCase ;
+  rdfs:label "Audit Tests" ;
+  :path "tests/test_audit.py" ;
+  :verifies :R5_Observability .
 
 # SHACL Shapes
 :ImplementationShape a sh:NodeShape ;

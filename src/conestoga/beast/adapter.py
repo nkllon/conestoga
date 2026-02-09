@@ -1,13 +1,14 @@
-import redis
-import time
+import asyncio
+import json
 import logging
 import threading
-import json
-import asyncio
+import time
 import uuid
-from typing import Optional, Callable, Dict, Any
+from collections.abc import Callable
 
-from conestoga.hacp.interceptor import HACPInterceptor, HACPViolationError
+import redis
+
+from conestoga.hacp.interceptor import HACPViolationError
 
 
 class BeastAdapter:
@@ -27,8 +28,8 @@ class BeastAdapter:
         self.observability = observability_stack
         self.hacp_interceptor = hacp_interceptor
         self.handlers = {}  # Initialize handlers dictionary
-        self.pending_replies: Dict[str, asyncio.Future] = {}  # For async reply handling
-        self._subscribe_task: Optional[asyncio.Task] = None
+        self.pending_replies: dict[str, asyncio.Future] = {}  # For async reply handling
+        self._subscribe_task: asyncio.Task | None = None
 
     def connect(self):
         """
@@ -51,9 +52,7 @@ class BeastAdapter:
                 redis.exceptions.ConnectionError,
                 redis.exceptions.TimeoutError,
             ) as e:
-                logging.error(
-                    f"Redis connection failed: {e}. Retrying in {retry_delay} seconds."
-                )
+                logging.error(f"Redis connection failed: {e}. Retrying in {retry_delay} seconds.")
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 30)
 
@@ -102,7 +101,7 @@ class BeastAdapter:
         """
         Deserializes and routes an incoming message.
         """
-        from conestoga.beast.envelope import validate_envelope, EnvelopeValidationError
+        from conestoga.beast.envelope import EnvelopeValidationError, validate_envelope
 
         try:
             message = json.loads(raw_message)
@@ -113,9 +112,7 @@ class BeastAdapter:
             except EnvelopeValidationError as e:
                 logging.error(f"Envelope validation failed: {e}")
                 if self.observability:
-                    self.observability.messages_total.labels(
-                        type="invalid", direction="in"
-                    ).inc()
+                    self.observability.messages_total.labels(type="invalid", direction="in").inc()
                 return  # Reject malformed message
 
             if self.hacp_interceptor:
@@ -174,7 +171,8 @@ class BeastAdapter:
             ).inc()
 
         try:
-            channel = "beast:global:messages"  # Default channel, could be dynamic based on message content
+            # Default channel, could be dynamic based on message content
+            channel = "beast:global:messages"
             self.redis_client.publish(channel, json.dumps(message))
         except redis.exceptions.ConnectionError:
             logging.error("Failed to send message due to connection error.")
@@ -186,7 +184,8 @@ class BeastAdapter:
         Connects and starts listening for messages.
         """
         self.connect()
-        # The subscription loop should ideally run in a separate thread to not block the main process
+        # The subscription loop should ideally run in a separate thread to
+        # not block the main process
         subscribe_thread = threading.Thread(target=self._subscribe, daemon=True)
         subscribe_thread.start()
 
@@ -209,7 +208,9 @@ class BeastAdapter:
                 await self._subscribe_task
             except asyncio.CancelledError:
                 # Task cancellation is expected when stopping the adapter.
-                logging.debug("Subscribe task cancelled during async_stop (expected during shutdown).")
+                logging.debug(
+                    "Subscribe task cancelled during async_stop (expected during shutdown)."
+                )
         if self.redis_client:
             await asyncio.to_thread(self.redis_client.close)
 
@@ -235,7 +236,7 @@ class BeastAdapter:
         """
         Async version of message handler.
         """
-        from conestoga.beast.envelope import validate_envelope, EnvelopeValidationError
+        from conestoga.beast.envelope import EnvelopeValidationError, validate_envelope
 
         try:
             message = json.loads(raw_message)
@@ -246,9 +247,7 @@ class BeastAdapter:
             except EnvelopeValidationError as e:
                 logging.error(f"Envelope validation failed: {e}")
                 if self.observability:
-                    self.observability.messages_total.labels(
-                        type="invalid", direction="in"
-                    ).inc()
+                    self.observability.messages_total.labels(type="invalid", direction="in").inc()
                 return
 
             if self.hacp_interceptor:
@@ -293,14 +292,12 @@ class BeastAdapter:
         else:
             logging.warning(f"No handler for message type: {message_type}")
 
-    async def async_send_message(
-        self, target_agent: str, message_type: str, payload: dict
-    ) -> str:
+    async def async_send_message(self, target_agent: str, message_type: str, payload: dict) -> str:
         """
         Async version of send_message that returns a correlation ID.
         """
+
         from conestoga.beast.envelope import create_envelope
-        from datetime import datetime
 
         correlation_id = str(uuid.uuid4())
         payload["correlation_id"] = correlation_id
@@ -326,15 +323,11 @@ class BeastAdapter:
 
         if self.observability:
             message = self.observability.inject_trace_context(message)
-            self.observability.messages_total.labels(
-                type=message_type, direction="out"
-            ).inc()
+            self.observability.messages_total.labels(type=message_type, direction="out").inc()
 
         try:
             channel = f"beast:agent:{target_agent}:inbox"
-            await asyncio.to_thread(
-                self.redis_client.publish, channel, json.dumps(message)
-            )
+            await asyncio.to_thread(self.redis_client.publish, channel, json.dumps(message))
             return correlation_id
         except redis.exceptions.ConnectionError:
             logging.error("Failed to send message due to connection error.")
@@ -343,9 +336,7 @@ class BeastAdapter:
             logging.error(f"Error sending message: {e}")
             raise
 
-    async def async_wait_for_reply(
-        self, correlation_id: str, timeout: float = 30.0
-    ) -> dict:
+    async def async_wait_for_reply(self, correlation_id: str, timeout: float = 30.0) -> dict:
         """
         Waits for a reply with the given correlation ID.
         """
@@ -355,7 +346,7 @@ class BeastAdapter:
         try:
             result = await asyncio.wait_for(future, timeout=timeout)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.pending_replies.pop(correlation_id, None)
             raise
 

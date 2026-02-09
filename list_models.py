@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import os
+import sys
 
-from dotenv import load_dotenv
+# Add src to path to import config
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
-load_dotenv()
+from conestoga.config import load_configuration
+
+load_configuration()
 
 try:
     import google.generativeai as genai
