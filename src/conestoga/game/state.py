@@ -105,6 +105,7 @@ class GameState:
     run_history_summary: list[str] = field(default_factory=list)
     is_game_over: bool = False
     victory: bool = False
+    game_over_cause: str | None = None
 
     def __post_init__(self):
         if not self.party:
@@ -195,15 +196,25 @@ class GameState:
         if self.miles_traveled >= self.target_miles:
             self.is_game_over = True
             self.victory = True
+            self.game_over_cause = "victory"
         # Check failure conditions
         elif all(m.health <= 0 for m in self.party):
             # All party members dead
             self.is_game_over = True
             self.victory = False
+            if self.food <= 0:
+                self.game_over_cause = "starvation"
+            elif self.water <= 0:
+                self.game_over_cause = "dehydration"
+            else:
+                self.game_over_cause = "party_death"
         elif self.wagon_health <= 0:
             # Wagon destroyed
             self.is_game_over = True
             self.victory = False
+            self.game_over_cause = "wagon_destroyed"
+        else:
+            self.game_over_cause = None
 
     def get_summary(self) -> dict:
         return {

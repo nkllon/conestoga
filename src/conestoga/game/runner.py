@@ -410,7 +410,10 @@ class ConestogaGame:
                 )
             else:
                 print("\n*** GAME OVER ***")
-                if self.game_state.wagon_health <= 0:
+                if (
+                    self.game_state.game_over_cause == "wagon_destroyed"
+                    or self.game_state.wagon_health <= 0
+                ):
                     self.ui.add_to_log(
                         "With a final crack, the wagon axle snaps beyond repair.",
                         "danger",
@@ -419,15 +422,7 @@ class ConestogaGame:
                         "Stranded on the prairie with no way forward, your journey ends here.",
                         "danger",
                     )
-                elif all(m.health <= 0 for m in self.game_state.party):
-                    self.ui.add_to_log(
-                        "The final member of your party breathes their last.", "danger"
-                    )
-                    self.ui.add_to_log(
-                        "The Oregon Trail has claimed another family. Only the wagon remains.",
-                        "danger",
-                    )
-                elif self.game_state.food <= 0:
+                elif self.game_state.game_over_cause == "starvation":
                     self.ui.add_to_log(
                         "The last crumbs are gone. Starvation claims your family, one by one.",
                         "danger",
@@ -435,6 +430,23 @@ class ConestogaGame:
                     self.ui.add_to_log(
                         "Your bones will rest unmarked on the prairie, another tragedy of "
                         "the trail.",
+                        "danger",
+                    )
+                elif self.game_state.game_over_cause == "dehydration":
+                    self.ui.add_to_log(
+                        "Canteens run dry, and thirst overtakes your family on the open trail.",
+                        "danger",
+                    )
+                    self.ui.add_to_log(
+                        "No spring, no river, no rescue. The prairie keeps its silence.",
+                        "danger",
+                    )
+                elif all(m.health <= 0 for m in self.game_state.party):
+                    self.ui.add_to_log(
+                        "The final member of your party breathes their last.", "danger"
+                    )
+                    self.ui.add_to_log(
+                        "The Oregon Trail has claimed another family. Only the wagon remains.",
                         "danger",
                     )
             return
