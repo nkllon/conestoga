@@ -90,11 +90,14 @@ class Effect:
                 # Affect random party members (value = [health_change, num_affected])
                 if isinstance(self.value, list) and len(self.value) == 2:
                     health_change, num_affected = self.value
-                    affected = random.sample(
-                        game_state.party, min(num_affected, len(game_state.party))
-                    )
-                    for member in affected:
-                        member.health = max(0, min(100, member.health + health_change))
+                    alive_party = [m for m in game_state.party if m.health > 0]
+                    # Sample only from alive members
+                    if alive_party:
+                        affected = random.sample(
+                            alive_party, min(num_affected, len(alive_party))
+                        )
+                        for member in affected:
+                            member.health = max(0, min(100, member.health + health_change))
             elif self.operation == EffectType.SET_FLAG:
                 game_state.flags[self.target] = True
             elif self.operation == EffectType.CLEAR_FLAG:
