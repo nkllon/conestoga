@@ -1,4 +1,4 @@
-.PHONY: help install install-dev clean test lint format run
+.PHONY: help install install-dev clean test lint format run check-format types security ci
 
 help:
 	@echo "Available targets:"
@@ -38,3 +38,44 @@ format:
 
 run:
 	uv run python -m conestoga.main
+
+# Format check
+check-format:
+	uv run ruff format --check .
+
+# Type checking
+types:
+	uv run pyright || echo "Pyright found issues (soft fail)"
+
+# Security checks
+security:
+	ggshield secret scan repo .
+	uv run pip-audit . || echo "Pip audit found issues (soft fail)"
+
+# CI target
+ci: install-dev check-format lint types test security build
+
+# Build documentation and diagrams
+build: mermaid-svg index docs stage
+
+# DOCX Generation
+docs:
+	python3 scripts/convert_docs_to_docx_with_versioning.py
+
+# Stage Artifacts
+stage:
+	uv build
+	python3 scripts/stage_build_artifacts.py
+
+# Repository search index
+index:
+	python3 scripts/build_repo_index.py
+
+# Mermaid diagram generation
+mermaid-svg:
+	python3 scripts/convert_mermaid_to_svg.py
+
+# Repository validation
+validate:
+	./scripts/validate_repo.sh
+

@@ -212,3 +212,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+.DS_Store
+
+# Local development artifacts
+dar_env.txt
+source.zip

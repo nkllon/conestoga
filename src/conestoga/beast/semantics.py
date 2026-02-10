@@ -5,11 +5,11 @@ Provides semantic interoperability between Beast concepts and Eudorus ontology.
 Maps Beast Agent, Task, and Validation entities to RDF/OWL representations.
 """
 
-from typing import Dict, Any, Optional, List
-from rdflib import Graph, Namespace, Literal, URIRef
-from rdflib.namespace import RDF, RDFS, OWL
 import logging
+from typing import Any
 
+from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib.namespace import OWL, RDF, RDFS
 
 # Define Beast semantics namespace
 BEAST = Namespace("http://nkllon.com/ontology/beast#")
@@ -27,7 +27,7 @@ class SemanticAlignmentLayer:
     - Define observability monitoring classes
     """
 
-    def __init__(self, ontology_path: Optional[str] = None):
+    def __init__(self, ontology_path: str | None = None):
         """
         Initialize the semantic alignment layer.
 
@@ -86,9 +86,7 @@ class SemanticAlignmentLayer:
 
         # Observability classes
         self.graph.add((EUDORUS.PrometheusExporter, RDF.type, OWL.Class))
-        self.graph.add(
-            (EUDORUS.PrometheusExporter, RDFS.label, Literal("Prometheus Exporter"))
-        )
+        self.graph.add((EUDORUS.PrometheusExporter, RDFS.label, Literal("Prometheus Exporter")))
         self.graph.add(
             (
                 EUDORUS.PrometheusExporter,
@@ -108,9 +106,7 @@ class SemanticAlignmentLayer:
         )
 
         self.graph.add((EUDORUS.ObservatoryConnector, RDF.type, OWL.Class))
-        self.graph.add(
-            (EUDORUS.ObservatoryConnector, RDFS.label, Literal("Observatory Connector"))
-        )
+        self.graph.add((EUDORUS.ObservatoryConnector, RDFS.label, Literal("Observatory Connector")))
         self.graph.add(
             (
                 EUDORUS.ObservatoryConnector,
@@ -162,9 +158,7 @@ class SemanticAlignmentLayer:
             logging.error(f"Failed to save ontology to {path}: {e}")
             raise
 
-    def create_agent(
-        self, agent_id: str, properties: Optional[Dict[str, Any]] = None
-    ) -> URIRef:
+    def create_agent(self, agent_id: str, properties: dict[str, Any] | None = None) -> URIRef:
         """
         Create an agent entity in the ontology.
 
@@ -190,7 +184,7 @@ class SemanticAlignmentLayer:
         self,
         task_id: str,
         agent_uri: URIRef,
-        properties: Optional[Dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> URIRef:
         """
         Create a task entity in the ontology.
@@ -220,7 +214,7 @@ class SemanticAlignmentLayer:
         validation_id: str,
         task_uri: URIRef,
         result: bool,
-        properties: Optional[Dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> URIRef:
         """
         Create a validation entity in the ontology.
@@ -306,7 +300,7 @@ class SemanticAlignmentLayer:
         """
         return self.graph.serialize(format="turtle")
 
-    def query_agents(self) -> List[str]:
+    def query_agents(self) -> list[str]:
         """
         Query all agents in the knowledge graph.
 
@@ -327,7 +321,7 @@ class SemanticAlignmentLayer:
                 agents.append(str(row.label))
         return agents
 
-    def query_agent_tasks(self, agent_id: str) -> List[str]:
+    def query_agent_tasks(self, agent_id: str) -> list[str]:
         """
         Query all tasks for a specific agent.
 

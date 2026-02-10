@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conestoga | The Digital Frontier</title>
+    <meta name="description" content="An Oregon Trail-inspired journey simulation with Gemini 3 API dynamic events.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico"> <!-- Placeholder, need to create -->
+</head>
+
+<body>
+    <div class="noise-overlay"></div>
+    <div class="scanlines"></div>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="#" class="logo">CONESTOGA<span class="cursor">_</span></a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#about">About</a>
+                <a href="#download" class="btn btn-primary">Download</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container hero-content">
+            <h1 class="glitch" data-text="SURVIVE THE TRAIL">SURVIVE THE TRAIL</h1>
+            <p class="subtitle">An AI-Powered Journey into the Unknown</p>
+            <div class="hero-actions">
+                <a href="#download" class="btn btn-lg btn-glow">Start Your Journey</a>
+                <a href="https://github.com/nkllon/conestoga" target="_blank" class="btn btn-lg btn-outline">View
+                    Source</a>
+            </div>
+        </div>
+        <div class="hero-bg">
+            <img src="assets/hero_background.png" alt="Digital Oregon Trail Landscape">
+            <div class="gradient-overlay"></div>
+        </div>
+    </header>
+
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">SYSTEM_FEATURES</h2>
+            <div class="grid">
+                <div class="card glass">
+                    <div class="icon">✨</div>
+                    <h3>Gemini 3 Powered</h3>
+                    <p>Dynamic narratives generated in real-time. No two journeys are ever the same.</p>
+                </div>
+                <div class="card glass">
+                    <div class="icon">💀</div>
+                    <h3>Unforgiving Simulation</h3>
+                    <p>Manage resources, health, and morale against a harsh, procedurally generated environment.</p>
+                </div>
+                <div class="card glass">
+                    <div class="icon">💾</div>
+                    <h3>Retro-Future UI</h3>
+                    <p>A nostalgic 8-bit interface reimagined with modern UX and fluid animations.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="download" class="download">
+        <div class="container">
+            <div class="download-box glass">
+                <h2>Acquire Binary</h2>
+                <p>Select your platform to initiate download.</p>
+                <div class="platform-buttons">
+                    <a href="downloads/Conestoga-macOS.zip" class="btn btn-platform">
+                        <span class="os-icon"></span> macOS
+                        <span class="version">v0.1.0-alpha</span>
+                    </a>
+                    <a href="downloads/Conestoga-Windows.zip" class="btn btn-platform">
+                        <span class="os-icon">❖</span> Windows
+                        <span class="version">v0.1.0-alpha</span>
+                    </a>
+                </div>
+                <div class="requirements">
+                    <p><strong>Requires:</strong> Gemini API Key (Optional fallback mode available)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Conestoga Project. Built with <a href="https://pygame.org">Pygame-ce</a> and <a
+                    href="https://deepmind.google/technologies/gemini/">Gemini</a>.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple scroll reveal effect
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+
+</html>

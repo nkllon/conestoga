@@ -31,6 +31,11 @@ dev = [
     "pyshacl>=0.23.0",
     "langchain>=0.2.10",
     "langchain-core>=0.2.10",
+    "pyinstaller>=6.4.0",
+    "python-docx>=1.1.2",
+    "beautifulsoup4>=4.12.0",
+    "pyright>=1.1.350",
+    "pip-audit>=2.7.0",
 ]
 
 [build-system]
@@ -61,3 +66,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+filterwarnings = [
+    "ignore::DeprecationWarning:rdflib.*:",
+    "ignore::DeprecationWarning:pyparsing.*:",
+]

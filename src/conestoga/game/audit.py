@@ -6,7 +6,7 @@ and, if LangChain is available, defers to an injected LLM chain for scoring.
 from __future__ import annotations
 
 import os
-from typing import Callable, Iterable, List
+from collections.abc import Callable, Iterable
 
 
 class AuditFinding:
@@ -22,7 +22,7 @@ def run_heuristic_audit(
     items: Iterable[str],
     llm_chain_factory: Callable[[], object] | None = None,
     enabled_env: str = "HEURISTIC_AUDIT",
-) -> List[AuditFinding]:
+) -> list[AuditFinding]:
     """Run heuristic audit; if LangChain is present and enabled, use it to score items."""
     if os.environ.get(enabled_env, "0") != "1":
         return []
@@ -53,9 +53,9 @@ def run_heuristic_audit(
 
 def default_langchain_chain():
     """Provide a minimal LangChain LLM chain if installed; otherwise raise ImportError."""
+    from langchain.chat_models import init_chat_model
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_core.runnables import RunnablePassthrough
-    from langchain.chat_models import init_chat_model
 
     prompt = ChatPromptTemplate.from_template(
         "Review the test log chunk and emit one concise risk observation if any:\n\n{log_chunk}"

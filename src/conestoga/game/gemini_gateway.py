@@ -9,7 +9,7 @@ Preview APIs (gemini-3-flash-preview, gemini-3-pro-preview) are acceptable.
 import json
 import os
 
-from dotenv import load_dotenv
+from conestoga.config import load_configuration
 
 from .events import (
     Choice,
@@ -24,7 +24,7 @@ from .state import GameState, ItemCatalog
 from .validators import validate_effect_targets
 
 # Load environment variables
-load_dotenv()
+load_configuration()
 
 try:
     from google import genai
@@ -71,9 +71,7 @@ class GeminiGateway:
         if not self.is_online():
             print("[Gemini] API disabled or offline, using fallback deck")
             self.last_event_source = "fallback"
-            self.last_failure_reason = (
-                "offline" if not self.enabled else "resource_exhausted"
-            )
+            self.last_failure_reason = "offline" if not self.enabled else "resource_exhausted"
             return self.fallback_deck.get_random_event(game_state)
 
         try:
@@ -116,9 +114,7 @@ class GeminiGateway:
         if not self.is_online():
             print("[Gemini] API disabled or offline, using fallback resolutions")
             self.last_resolution_source = "fallback"
-            self.last_failure_reason = (
-                "offline" if not self.enabled else "resource_exhausted"
-            )
+            self.last_failure_reason = "offline" if not self.enabled else "resource_exhausted"
             return self.fallback_deck.get_resolution(event_draft.event_id, choice_id)
 
         try:

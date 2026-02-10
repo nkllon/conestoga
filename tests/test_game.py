@@ -8,8 +8,8 @@ from conestoga.game.events import (
     FallbackDeck,
     Prerequisite,
 )
-from conestoga.game.gemini_gateway import GeminiGateway
 from conestoga.game.fallback_monitor import FallbackMonitor
+from conestoga.game.gemini_gateway import GeminiGateway
 from conestoga.game.state import GameState, ItemCatalog
 from conestoga.game.validators import validate_effect_targets
 
@@ -50,6 +50,20 @@ def test_resource_invariants():
 
     state.modify_resource("food", 100)
     assert state.food == 100
+
+
+def test_advance_day_sets_starvation_game_over_cause():
+    state = GameState()
+    state.food = 0
+    state.water = 100
+    for member in state.party:
+        member.health = 5
+
+    state.advance_day(miles=0)
+
+    assert state.is_game_over is True
+    assert state.victory is False
+    assert state.game_over_cause == "starvation"
 
 
 def test_prerequisites():
@@ -174,7 +188,7 @@ def test_choice_count_and_uniqueness_validation():
         choices=[Choice(id="c1", text="One")],
     )
     errors = too_few.validate(catalog)
-    assert any("between 2 and 3" in e for e in errors)
+    assert any("between 2 and 7" in e for e in errors)
 
     dup_ids = EventDraft(
         event_id="dup",
@@ -201,7 +215,7 @@ def test_modify_resource_rejects_unknown():
     state = GameState()
     try:
         state.modify_resource("gold", 10)
-        assert False, "Expected ValueError for unknown resource"
+        raise AssertionError("Expected ValueError for unknown resource")
     except ValueError:
         assert True
 
@@ -263,7 +277,45 @@ def test_runner_log_fallback_uses_ui_stub():
     try:
         game = runner_mod.ConestogaGame()
         game._log_fallback("event", "timeout")  # type: ignore[attr-defined]
-        assert any("Fallback event used" in msg for msg, cat in game.ui.event_log if cat == "warning")
+        assert any(
+            "Fallback event used" in msg for msg, cat in game.ui.event_log if cat == "warning"
+        )
+    finally:
+        runner_mod.GameUI = original_ui  # type: ignore[assignment]
+        runner_mod.ConestogaGame.start_prefetch = original_start_prefetch  # type: ignore[assignment]
+
+
+def test_runner_logs_starvation_narrative_for_starvation_death():
+    from conestoga.game import runner as runner_mod
+
+    class FakeUI:
+        def __init__(self):
+            self.event_log = []
+            self.gemini_online = True
+
+        def add_to_log(self, message: str, category: str = "info", *args, **kwargs):
+            self.event_log.append((message, category))
+
+    original_ui = runner_mod.GameUI
+    original_start_prefetch = runner_mod.ConestogaGame.start_prefetch
+    runner_mod.GameUI = FakeUI  # type: ignore[assignment]
+    runner_mod.ConestogaGame.start_prefetch = lambda self: None  # type: ignore[assignment]
+    try:
+        game = runner_mod.ConestogaGame()
+        game.game_state.food = 0
+        game.game_state.water = 100
+        for member in game.game_state.party:
+            member.health = 5
+
+        game.advance_travel()
+
+        messages = [msg for msg, _cat in game.ui.event_log]
+        assert game.mode == runner_mod.GameMode.GAME_OVER
+        assert game.game_state.game_over_cause == "starvation"
+        assert any("Starvation claims your family" in msg for msg in messages)
+        assert not any(
+            "final member of your party breathes their last" in msg.lower() for msg in messages
+        )
     finally:
         runner_mod.GameUI = original_ui  # type: ignore[assignment]
         runner_mod.ConestogaGame.start_prefetch = original_start_prefetch  # type: ignore[assignment]

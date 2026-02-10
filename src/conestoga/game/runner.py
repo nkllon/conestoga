@@ -188,9 +188,11 @@ class ConestogaGame:
                 self.mode = GameMode.EVENT
                 self.days_since_event = 0
                 print(f"[Event] Using prefetched: {self.current_event.title}")
+
+                # Log the full event description
+                self.ui.add_to_log(self.current_event.narrative, "warning")
                 if self.gemini.last_event_source == "fallback":
                     self.fallback_monitor.record_event("fallback", self.gemini.last_failure_reason)
-                    self._log_fallback("event", self.gemini.last_failure_reason)
                 self._sync_gemini_status()
                 # Start prefetching next event
                 self.start_prefetch()
@@ -218,7 +220,7 @@ class ConestogaGame:
         print(f"[Choice] Selected: {choice.text}")
 
         # Add player choice to narrative log
-        self.ui.add_to_log(f"You decide: {choice.text}", "info")
+        self.ui.add_to_log(f"Your party decided to {choice.text.lower()}", "info")
 
         # Check if we already generated this resolution
         if choice.id in self.current_resolutions:
@@ -237,21 +239,28 @@ class ConestogaGame:
         if not resolution:
             self.current_resolution = "You make your choice and move on."
         else:
+            # Track resources before resolution
+            old_food = self.game_state.food
+            old_water = self.game_state.water
+            old_ammo = self.game_state.ammo
+            old_money = self.game_state.money
+
             self.current_resolution = resolution.apply(self.game_state)
             print(f"[Resolution] {self.current_resolution}")
-            # Add outcome to event log
+
+            # Calculate resource changes
+            resources = {
+                "food": self.game_state.food - old_food,
+                "water": self.game_state.water - old_water,
+                "ammo": self.game_state.ammo - old_ammo,
+                "money": self.game_state.money - old_money,
+            }
+
+            # Add full resolution to event log with resource changes
             if self.current_resolution:
-                outcome_preview = (
-                    self.current_resolution.split(".")[0]
-                    if "." in self.current_resolution
-                    else self.current_resolution[:60]
-                )
-                self.ui.add_to_log(f"{outcome_preview}...", "info")
+                self.ui.add_to_log(self.current_resolution, "info", resources)
             if self.gemini.last_resolution_source == "fallback":
-                self.fallback_monitor.record_resolution(
-                    "fallback", self.gemini.last_failure_reason
-                )
-                self._log_fallback("resolution", self.gemini.last_failure_reason)
+                self.fallback_monitor.record_resolution("fallback", self.gemini.last_failure_reason)
 
         self._sync_gemini_status()
 
@@ -260,8 +269,35 @@ class ConestogaGame:
     def advance_travel(self):
         print(f"\n--- Day {self.game_state.day + 1} ---")
 
+        # Track resources before daily consumption
+        old_food = self.game_state.food
+        old_water = self.game_state.water
+
+        # Calculate wagon weight and adjust travel distance
+        wagon_weight = self.game_state.calculate_wagon_weight(self.item_catalog)
         miles_today = random.randint(12, 18)
+
+        # Reduce travel distance if overloaded (2000 lbs is optimal)
+        if wagon_weight > 2000:
+            excess_weight = wagon_weight - 2000
+            # Lose 1 mile per 200 lbs over capacity, minimum 5 miles
+            penalty = min(miles_today - 5, excess_weight // 200)
+            miles_today = max(5, miles_today - penalty)
+            if penalty > 0:
+                print(
+                    f"[Weight] Wagon overloaded ({wagon_weight} lbs) - "
+                    f"travel reduced by {penalty} miles"
+                )
+
         self.game_state.advance_day(miles_today)
+
+        # Calculate daily resource consumption
+        daily_resources = {
+            "food": self.game_state.food - old_food,
+            "water": self.game_state.water - old_water,
+            "ammo": 0,
+            "money": 0,
+        }
 
         print(
             f"Traveled {miles_today} miles. Total: "
@@ -308,10 +344,15 @@ class ConestogaGame:
 
         terrain = self.game_state.biome.value
         if terrain in terrain_stories:
-            self.ui.add_to_log(random.choice(terrain_stories[terrain]), "info")
+            self.ui.add_to_log(
+                random.choice(terrain_stories[terrain]), "info", daily_resources, is_day_start=True
+            )
         else:
             self.ui.add_to_log(
-                f"Day {self.game_state.day}: Another {miles_today} miles closer to Oregon.", "info"
+                f"Day {self.game_state.day}: Another {miles_today} miles closer to Oregon.",
+                "info",
+                daily_resources,
+                is_day_start=True,
             )
 
         # Narrative resource warnings
@@ -369,7 +410,19 @@ class ConestogaGame:
                 )
             else:
                 print("\n*** GAME OVER ***")
-                if self.game_state.food <= 0:
+                if (
+                    self.game_state.game_over_cause == "wagon_destroyed"
+                    or self.game_state.wagon_health <= 0
+                ):
+                    self.ui.add_to_log(
+                        "With a final crack, the wagon axle snaps beyond repair.",
+                        "danger",
+                    )
+                    self.ui.add_to_log(
+                        "Stranded on the prairie with no way forward, your journey ends here.",
+                        "danger",
+                    )
+                elif self.game_state.game_over_cause == "starvation":
                     self.ui.add_to_log(
                         "The last crumbs are gone. Starvation claims your family, one by one.",
                         "danger",
@@ -377,6 +430,15 @@ class ConestogaGame:
                     self.ui.add_to_log(
                         "Your bones will rest unmarked on the prairie, another tragedy of "
                         "the trail.",
+                        "danger",
+                    )
+                elif self.game_state.game_over_cause == "dehydration":
+                    self.ui.add_to_log(
+                        "Canteens run dry, and thirst overtakes your family on the open trail.",
+                        "danger",
+                    )
+                    self.ui.add_to_log(
+                        "No spring, no river, no rescue. The prairie keeps its silence.",
                         "danger",
                     )
                 elif all(m.health <= 0 for m in self.game_state.party):
@@ -426,7 +488,15 @@ class ConestogaGame:
             )
         elif key == pygame.K_RETURN:
             self.resolve_choice(self.selected_choice_index)
-        elif key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5]:
+        elif key in [
+            pygame.K_1,
+            pygame.K_2,
+            pygame.K_3,
+            pygame.K_4,
+            pygame.K_5,
+            pygame.K_6,
+            pygame.K_7,
+        ]:
             choice_num = key - pygame.K_1
             if choice_num < len(self.current_event.choices):
                 self.selected_choice_index = choice_num
@@ -501,7 +571,6 @@ class ConestogaGame:
                         self.gemini.last_event_source = "fallback"
                         self.gemini.last_failure_reason = "timeout"
                         self.fallback_monitor.record_event("fallback", "timeout")
-                        self._log_fallback("event", "timeout")
                         self._sync_gemini_status()
 
             if key:

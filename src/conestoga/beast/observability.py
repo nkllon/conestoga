@@ -1,8 +1,9 @@
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from prometheus_client import Counter, Histogram, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
+
 
 class ObservabilityStack:
     def __init__(self, service_name: str, jaeger_host: str, jaeger_port: int, metrics_port: int):
@@ -15,17 +16,19 @@ class ObservabilityStack:
         otlp_exporter = OTLPSpanExporter(
             endpoint=f"http://{host}:{port}",
         )
-        trace.get_tracer_provider().add_span_processor(
-            BatchSpanProcessor(otlp_exporter)
-        )
+        trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_exporter))
         self.tracer = trace.get_tracer(self.service_name)
 
     def _setup_metrics(self, port: int):
         start_http_server(port)
-        self.messages_total = Counter('beast_messages_total', 'Total messages', ['type', 'direction'])
-        self.processing_duration = Histogram('beast_processing_duration_seconds', 'Message processing duration')
-        self.connection_status = Gauge('beast_connection_status', 'Beast connection status')
-        self.hacp_violations = Counter('hacp_violations_total', 'Total HACP violations')
+        self.messages_total = Counter(
+            "beast_messages_total", "Total messages", ["type", "direction"]
+        )
+        self.processing_duration = Histogram(
+            "beast_processing_duration_seconds", "Message processing duration"
+        )
+        self.connection_status = Gauge("beast_connection_status", "Beast connection status")
+        self.hacp_violations = Counter("hacp_violations_total", "Total HACP violations")
 
     def get_tracer(self):
         return self.tracer
@@ -35,8 +38,8 @@ class ObservabilityStack:
         with self.tracer.start_as_current_span("send_message") as span:
             ctx = span.get_span_context()
             message.setdefault("header", {})["trace_context"] = {
-                "trace_id": format(ctx.trace_id, 'x'),
-                "span_id": format(ctx.span_id, 'x'),
+                "trace_id": format(ctx.trace_id, "x"),
+                "span_id": format(ctx.span_id, "x"),
             }
         return message
 
@@ -45,9 +48,9 @@ class ObservabilityStack:
         ctx = message.get("header", {}).get("trace_context")
         if ctx:
             return trace.SpanContext(
-                trace_id=int(ctx['trace_id'], 16),
-                span_id=int(ctx['span_id'], 16),
+                trace_id=int(ctx["trace_id"], 16),
+                span_id=int(ctx["span_id"], 16),
                 is_remote=True,
-                trace_flags=trace.TraceFlags(0x01)
+                trace_flags=trace.TraceFlags(0x01),
             )
         return None

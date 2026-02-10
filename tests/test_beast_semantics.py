@@ -1,11 +1,13 @@
 """Tests for Beast semantic alignment and ontology operations"""
+
 import pytest
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import RDF, RDFS
+
 from conestoga.beast.semantics import (
-    SemanticAlignmentLayer,
     BEAST,
     EUDORUS,
+    SemanticAlignmentLayer,
 )
 
 
@@ -40,7 +42,7 @@ class TestSemanticAlignmentLayerInit:
         layer = SemanticAlignmentLayer()
 
         # Check namespace bindings
-        namespaces = {ns: uri for ns, uri in layer.graph.namespaces()}
+        namespaces = dict(layer.graph.namespaces())
         assert "beast" in namespaces
         assert "eudorus" in namespaces
         assert "rdf" in namespaces
@@ -260,9 +262,7 @@ class TestSemanticAlignmentLayerValidationOperations:
 
         agent_uri = layer.create_agent(agent_id="test-agent")
         task_uri = layer.create_task(task_id="test-task", agent_uri=agent_uri)
-        val1 = layer.create_validation(
-            validation_id="validation-1", task_uri=task_uri, result=True
-        )
+        val1 = layer.create_validation(validation_id="validation-1", task_uri=task_uri, result=True)
         val2 = layer.create_validation(
             validation_id="validation-2", task_uri=task_uri, result=False
         )
@@ -361,7 +361,7 @@ class TestSemanticAlignmentLayerRDFOperations:
 
         invalid_rdf = "this is not valid RDF"
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             layer.process_rdf_payload(invalid_rdf, format="turtle")
 
     def test_export_as_turtle(self):
