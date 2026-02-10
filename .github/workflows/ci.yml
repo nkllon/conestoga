@@ -112,33 +112,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install gitleaks
-        run: |
-          wget https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz
-          mkdir gitleaks_temp
-          tar -xzf gitleaks_8.30.0_linux_x64.tar.gz -C gitleaks_temp
-          sudo mv gitleaks_temp/gitleaks /usr/local/bin/
-          rm -rf gitleaks_temp gitleaks_8.30.0_linux_x64.tar.gz
-          gitleaks version
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync --frozen --all-extras
-
-      - name: Run Security Check
-        # Uses the same script as local `make security`
-        # Scans only current files, ignores git history
-        run: |
-          rm -rf .git
-          uv run python scripts/check_security.py
-          uv tool run pip-audit . || echo "::warning::Pip audit found issues (soft fail for now)"
+      - name: GitGuardian scanning
+        uses: GitGuardian/ggshield-action@v1.27.0
+        env:
+          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
+          GITHUB_PULL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
   artifacts:
     name: artifacts
