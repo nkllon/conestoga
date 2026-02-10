@@ -34,6 +34,8 @@ dev = [
     "pyinstaller>=6.4.0",
     "python-docx>=1.1.2",
     "beautifulsoup4>=4.12.0",
+    "pyright>=1.1.350",
+    "pip-audit>=2.7.0",
 ]
 
 [build-system]

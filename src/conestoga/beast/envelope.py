@@ -6,7 +6,7 @@ with the standard Beast message format.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -168,7 +168,7 @@ def create_envelope(
 
     header = {
         "sender": sender,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),  # noqa: UP017
         "id": message_id,
     }
 
