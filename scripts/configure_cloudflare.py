@@ -75,20 +75,24 @@ if __name__ == "__main__":
         # Fallback to 1Password
         try:
             import subprocess
+
             print("🔐 Attempting to fetch CLOUDFLARE_TOKEN from 1Password...")
             result = subprocess.run(
                 ["op", "read", "op://energration/v5ga632uvvehpygjltskllkiyy/credential"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             token = result.stdout.strip()
             print("✓ Retrieved token from 1Password")
-        except Exception as e:
+        except Exception:
             pass
 
     if not token:
-        print("Error: CLOUDFLARE_TOKEN environment variable not set and could not be retrieved from 1Password")
+        print(
+            "Error: CLOUDFLARE_TOKEN environment variable not set "
+            "and could not be retrieved from 1Password"
+        )
         sys.exit(1)
 
     if len(sys.argv) < 4:
