@@ -1,0 +1,4 @@
+[ignore]
+commits = [
+    "5b40da91c02e0b0926d0f8b7b59cfe512c36cffb" # Historical secrets (revoked/invalid) in verify_token.py and site_verification_flow.py
+]
