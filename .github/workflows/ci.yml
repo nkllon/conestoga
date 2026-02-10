@@ -135,6 +135,7 @@ jobs:
         # Uses the same script as local `make security`
         # Scans only current files, ignores git history
         run: |
+          rm -rf .git
           uv run python scripts/check_security.py
           uv tool run pip-audit . || echo "::warning::Pip audit found issues (soft fail for now)"
 
