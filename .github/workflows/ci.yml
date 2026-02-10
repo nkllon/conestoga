@@ -135,6 +135,14 @@ jobs:
         # Uses the same script as local `make security`
         # Scans only current files, ignores git history
         run: |
+          echo "Current working directory: $(pwd)"
+          ls -la
+          echo "README.md line count:"
+          wc -l README.md
+          echo "README.md first 20 lines:"
+          head -n 20 README.md
+          echo "Git status:"
+          git status
           rm -rf .git
           uv run python scripts/check_security.py
           uv tool run pip-audit . || echo "::warning::Pip audit found issues (soft fail for now)"
