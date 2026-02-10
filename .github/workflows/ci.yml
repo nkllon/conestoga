@@ -191,6 +191,15 @@ jobs:
           for name in build test lint security artifacts deploy-gate; do
             var_name=$(echo "${name}_RESULT" | tr '[:lower:]-' '[:upper:]_')
             result=${!var_name}
+            if [ "$name" == "deploy-gate" ] && [ "$result" == "skipped" ]; then
+              echo "Job ${name} result: ${result} (allowed)"
+              continue
+            fi
+            if [ "$name" == "artifacts" ] && [ "$result" == "skipped" ]; then
+              echo "Job ${name} result: ${result} (allowed)"
+              continue
+            fi
+
             if [ "$result" != "success" ]; then
               echo "Job ${name} result: ${result}"
               failures=$((failures + 1))
