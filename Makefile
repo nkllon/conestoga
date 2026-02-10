@@ -49,7 +49,7 @@ types:
 
 # Security checks
 security:
-	python3 scripts/check_security.py
+	ggshield secret scan repo .
 	uv run pip-audit . || echo "Pip audit found issues (soft fail)"
 
 # CI target
